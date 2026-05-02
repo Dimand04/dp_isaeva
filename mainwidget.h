@@ -17,6 +17,24 @@ public:
     MainWidget(QWidget *parent = nullptr);
     ~MainWidget();
 
+private slots:
+    void sw_main_change(int index);
+
+    // fake
+    void fillDemoClients();
+    void fillDemoClientDetails();
+    void fillDemoClientProjects();
+    void fillDemoClientFinance();
+    void fillDemoClientFiles();
+    void setupProjectFilters();
+    void fillDemoProjectsTable();
+    void fillDemoProjectDetail();
+    void fillDemoProjectEstimate();
+    void fillDemoProjectFiles();
+    void setupCatalogFilters();
+    void fillDemoCatalog();
+    void updateCatalogLayout();
+    //
 private:
     Ui::MainWidget *ui;
 };
