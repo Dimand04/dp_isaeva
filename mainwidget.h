@@ -3,6 +3,7 @@
 
 #include <QWidget>
 
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWidget;
@@ -14,7 +15,7 @@ class MainWidget : public QWidget
     Q_OBJECT
 
 public:
-    MainWidget(QWidget *parent = nullptr);
+    MainWidget(int userId, QWidget *parent = nullptr);
     ~MainWidget();
 
 private slots:
@@ -34,8 +35,19 @@ private slots:
     void setupCatalogFilters();
     void fillDemoCatalog();
     void updateCatalogLayout();
+    void fillDemoCatalogSpecs();
+    void fillDemoCatalogEstimate();
+    void setupExportFilters();
+    void fillExportPreviewDemo();
+    void fillExportFileSelection(int projectIndex);
+    void fillDemoAdminUsers();
+    void fillDemoAdminPermissions();
+    void fillDemoNSITypes();
+    void fillDemoNSIMaterials();
+    void fillDemoDashboard();
     //
 private:
     Ui::MainWidget *ui;
+    int userId;
 };
 #endif // MAINWIDGET_H

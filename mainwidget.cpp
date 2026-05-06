@@ -1,9 +1,10 @@
 #include "mainwidget.h"
 #include "ui_mainwidget.h"
 
-MainWidget::MainWidget(QWidget *parent)
+MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::MainWidget)
+    , userId(userId)
 {
     ui->setupUi(this);
 
@@ -26,6 +27,15 @@ MainWidget::MainWidget(QWidget *parent)
     fillDemoProjectFiles();
     setupCatalogFilters();
     fillDemoCatalog();
+    fillDemoCatalogSpecs();
+    fillDemoCatalogEstimate();
+    setupExportFilters();
+    fillExportPreviewDemo();
+    fillDemoAdminUsers();
+    fillDemoAdminPermissions();
+    fillDemoNSITypes();
+    fillDemoNSIMaterials();
+    fillDemoDashboard();
 }
 
 MainWidget::~MainWidget()
@@ -771,4 +781,428 @@ void MainWidget::updateCatalogLayout()
 
     // Пружина снизу
     ui->gridLayout_catalog->setRowStretch(ui->gridLayout_catalog->rowCount(), 1);
+}
+
+void MainWidget::fillDemoCatalogSpecs()
+{
+    // 1. Настройка таблицы
+    ui->tw_catalog_params->setColumnCount(2);
+    ui->tw_catalog_params->setHorizontalHeaderLabels({"Параметр", "Значение"});
+
+    // Настройка размеров: Параметр по тексту, Значение занимает всё остальное место
+    ui->tw_catalog_params->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    ui->tw_catalog_params->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+
+    // Отключаем редактирование и скрываем вертикальный заголовок (номера строк)
+    ui->tw_catalog_params->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tw_catalog_params->verticalHeader()->setVisible(false);
+    ui->tw_catalog_params->setAlternatingRowColors(true); // Эффект зебры
+
+    ui->tw_catalog_params->setRowCount(0);
+
+    // 2. Тестовые данные для технических характеристик
+    struct SpecEntry {
+        QString key;
+        QString value;
+    };
+
+    QList<SpecEntry> specs = {
+        {"Общая площадь", "145.5 м²"},
+        {"Жилая площадь", "98.0 м²"},
+        {"Габариты дома", "10.4 х 12.6 м"},
+        {"Количество этажей", "2 (включая мансарду)"},
+        {"Тип фундамента", "Монолитная ж/б плита (300 мм)"},
+        {"Материал стен", "Профилированный брус 200х150 мм"},
+        {"Перекрытия", "Деревянные балки с шумоизоляцией"},
+        {"Тип кровли", "Двускатная, металлочерепица GrandLine"},
+        {"Высота потолков", "2.85 м"},
+        {"Площадь остекления", "24.5 м² (двухкамерные пакеты)"},
+        {"Срок возведения", "45 - 60 рабочих дней"}
+    };
+
+    // 3. Заполнение таблицы
+    for (int i = 0; i < specs.size(); ++i) {
+        ui->tw_catalog_params->insertRow(i);
+
+        // Ячейка параметра (левая)
+        QTableWidgetItem *itemKey = new QTableWidgetItem(specs[i].key);
+        itemKey->setForeground(QColor(100, 100, 100)); // Серый цвет для названий
+
+        // Ячейка значения (правая)
+        QTableWidgetItem *itemValue = new QTableWidgetItem(specs[i].value);
+        itemValue->setFont(QFont("Segoe UI", -1, QFont::Bold)); // Жирный для самих данных
+
+        ui->tw_catalog_params->setItem(i, 0, itemKey);
+        ui->tw_catalog_params->setItem(i, 1, itemValue);
+    }
+}
+
+void MainWidget::fillDemoCatalogEstimate()
+{
+    // 1. Настройка таблицы
+    ui->tw_catalog_estimate->setColumnCount(3);
+    ui->tw_catalog_estimate->setHorizontalHeaderLabels({"Наименование материала", "Ед. изм.", "Кол-во"});
+
+    // Настройка размеров: Название тянется, остальное по тексту
+    ui->tw_catalog_estimate->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_catalog_estimate->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    ui->tw_catalog_estimate->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+
+    ui->tw_catalog_estimate->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tw_catalog_estimate->verticalHeader()->setVisible(false);
+    ui->tw_catalog_estimate->setAlternatingRowColors(true);
+
+    ui->tw_catalog_estimate->setRowCount(0);
+
+    // 2. Тестовые данные (Спецификация материалов для проекта "Осло")
+    struct MaterialItem {
+        QString name;
+        QString unit;
+        QString qty;
+    };
+
+    QList<MaterialItem> items = {
+        {"Бетон марки М300 (фундамент)", "м³", "42.5"},
+        {"Арматура стальная 12 мм", "тн", "1.25"},
+        {"Брус профилированный 150х200", "м³", "68.0"},
+        {"Балки перекрытий (сосна)", "м³", "12.4"},
+        {"Металлочерепица (кровля)", "м²", "195.0"},
+        {"Утеплитель минераловатный", "м²", "140.0"},
+        {"Гидро-пароизоляция", "рул.", "8.0"},
+        {"Окна ПВХ (двухкамерные)", "шт", "12"},
+        {"Дверь входная (сейф-тип)", "шт", "1"},
+        {"Пиломатериал (черновой)", "м³", "4.5"},
+        {"Крепежные элементы (комплект)", "компл", "1"}
+    };
+
+    // 3. Заполнение таблицы
+    for (int i = 0; i < items.size(); ++i) {
+        ui->tw_catalog_estimate->insertRow(i);
+
+        // Наименование
+        ui->tw_catalog_estimate->setItem(i, 0, new QTableWidgetItem(items[i].name));
+
+        // Единица измерения (по центру)
+        QTableWidgetItem *itemUnit = new QTableWidgetItem(items[i].unit);
+        itemUnit->setTextAlignment(Qt::AlignCenter);
+        ui->tw_catalog_estimate->setItem(i, 1, itemUnit);
+
+        // Количество (вправо)
+        QTableWidgetItem *itemQty = new QTableWidgetItem(items[i].qty);
+        itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        itemQty->setFont(QFont("Segoe UI", -1, QFont::Bold)); // Выделяем количество
+        ui->tw_catalog_estimate->setItem(i, 2, itemQty);
+    }
+}
+
+void MainWidget::setupExportFilters()
+{
+    // 1. Выбор проекта
+    ui->cb_export_project_select->clear();
+    ui->cb_export_project_select->addItem("--- Выберите проект ---", 0);
+    ui->cb_export_project_select->addItem("Коттедж 'Скандинавия'", 1);
+    ui->cb_export_project_select->addItem("Гостевой дом с баней", 2);
+    ui->cb_export_project_select->addItem("Гараж на 2 автомобиля", 3);
+
+    // 2. Настройка комбобокса выбора документа/файла
+    ui->cb_export_file_type->clear();
+    ui->cb_export_file_type->addItem("--- Сначала выберите проект ---");
+    ui->cb_export_file_type->setEnabled(false); // Блокируем до выбора проекта
+
+    // 3. Выбор формата
+    ui->cb_export_format->clear();
+    ui->cb_export_format->addItems({"PDF Document (.pdf)", "Excel (.csv)", "AutoCAD (.dxf)", "3D Model (.obj)"});
+}
+
+void MainWidget::fillExportPreviewDemo()
+{
+    // Настройка таблицы предпросмотра (имитация печатного документа)
+    ui->tw_report_data->setColumnCount(4);
+    ui->tw_report_data->setHorizontalHeaderLabels({"Наименование", "Кол-во", "Цена", "Сумма"});
+    ui->tw_report_data->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+
+    ui->tw_report_data->setRowCount(0);
+
+    // Демо-строки для сметы гаража
+    struct Row { QString name; QString qty; QString prc; QString sum; };
+    QList<Row> rows = {
+        {"Бетон М300", "12.5 м³", "6 200", "77 500"},
+        {"Газоблок 600х300", "32.0 м³", "5 800", "185 600"},
+        {"Арматура 12мм", "0.85 тн", "72 000", "61 200"},
+        {"Кровельный профнастил", "55.0 м²", "850", "46 750"}
+    };
+
+    for (int i = 0; i < rows.size(); ++i) {
+        ui->tw_report_data->insertRow(i);
+        ui->tw_report_data->setItem(i, 0, new QTableWidgetItem(rows[i].name));
+        ui->tw_report_data->setItem(i, 1, new QTableWidgetItem(rows[i].qty));
+        ui->tw_report_data->setItem(i, 2, new QTableWidgetItem(rows[i].prc));
+        ui->tw_report_data->setItem(i, 3, new QTableWidgetItem(rows[i].sum));
+
+        // Выравнивание чисел
+        ui->tw_report_data->item(i, 1)->setTextAlignment(Qt::AlignCenter);
+        ui->tw_report_data->item(i, 3)->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    }
+
+    // Итоговая информация в лейбл внизу предпросмотра
+    ui->lb_total_info->setText("ИТОГО К ОПЛАТЕ: 371 050.00 ₽");
+}
+
+void MainWidget::fillExportFileSelection(int projectIndex)
+{
+    if (projectIndex <= 0) {
+        ui->cb_export_file_type->clear();
+        ui->cb_export_file_type->addItem("--- Сначала выберите проект ---");
+        ui->cb_export_file_type->setEnabled(false);
+        return;
+    }
+
+    ui->cb_export_file_type->setEnabled(true);
+    ui->cb_export_file_type->clear();
+
+    // Добавляем список доступных сущностей для экспорта
+    // Мы можем использовать данные (UserRole) для определения, какую страницу превью показывать
+    ui->cb_export_file_type->addItem("📄 Полная смета материалов", "table");
+    ui->cb_export_file_type->addItem("📄 Календарный план работ", "table");
+    ui->cb_export_file_type->addItem("📐 План этажа (2D)", "graphics");
+    ui->cb_export_file_type->addItem("📐 Схема фундамента (2D)", "graphics");
+    ui->cb_export_file_type->addItem("📐 Фасады (2D)", "graphics");
+    ui->cb_export_file_type->addItem("📦 3D-модель (каркас)", "model");
+    ui->cb_export_file_type->addItem("📦 3D-визуализация (рендер)", "model");
+}
+
+void MainWidget::fillDemoAdminUsers()
+{
+    ui->lw_admin_users->clear();
+    ui->lw_admin_users->setIconSize(QSize(32, 32));
+
+    struct UserDemo {
+        QString login;
+        QString role;
+        bool isAdmin;
+    };
+
+    QList<UserDemo> users = {
+        {"admin", "Администратор системы", true},
+        {"ivanov_manager", "Менеджер по продажам", false},
+        {"petrov_eng", "Инженер-проектировщик", false},
+        {"sidorov_boss", "Руководитель проектов", false},
+        {"kuznetsova_acc", "Бухгалтер", false}
+    };
+
+    for (const auto &u : users) {
+        // Формируем текст: Логин жирным, роль под ним
+        QListWidgetItem *item = new QListWidgetItem();
+        item->setText(u.login + "\n" + u.role);
+
+        // Устанавливаем иконку (используем стандартные для демо)
+        QIcon icon = style()->standardIcon(u.isAdmin ? QStyle::SP_ComputerIcon : QStyle::SP_DirHomeIcon);
+        item->setIcon(icon);
+
+        ui->lw_admin_users->addItem(item);
+    }
+}
+
+void MainWidget::fillDemoAdminPermissions()
+{
+    ui->lw_admin_permissions->clear();
+
+    // Список прав, соответствующих твоим вкладкам
+    QStringList permissions = {
+        "Доступ к разделу 'Главная'",
+        "Доступ к разделу 'Клиенты'",
+        "Доступ к разделу 'Проекты'",
+        "Доступ к разделу 'Каталог'",
+        "Доступ к разделу 'Экспорт'",
+        "Доступ к разделу 'Администрирование'",
+        "Право на удаление проектов",
+        "Право на редактирование смет",
+        "Доступ к финансовой отчетности"
+    };
+
+    for (const QString &text : permissions) {
+        QListWidgetItem *item = new QListWidgetItem(text, ui->lw_admin_permissions);
+
+        // Включаем чекбокс для элемента
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+
+        // Для демо: первые 5 пунктов отметим как включенные
+        if (permissions.indexOf(text) < 5) {
+            item->setCheckState(Qt::Checked);
+        } else {
+            item->setCheckState(Qt::Unchecked);
+        }
+
+        ui->lw_admin_permissions->addItem(item);
+    }
+}
+
+void MainWidget::fillDemoNSITypes()
+{
+    ui->lw_nsi_types->clear();
+    ui->lw_nsi_types->setIconSize(QSize(24, 24));
+
+    struct TypeDemo { QString name; QIcon icon; };
+
+    // Используем стандартные иконки для наглядности
+    QList<TypeDemo> types = {
+        {"Категории материалов", style()->standardIcon(QStyle::SP_DirIcon)},
+        {"Материалы", style()->standardIcon(QStyle::SP_FileIcon)},
+        {"Поставщики", style()->standardIcon(QStyle::SP_DirHomeIcon)},
+        {"Единицы измерения", style()->standardIcon(QStyle::SP_FileDialogContentsView)},
+        {"Виды строительных работ", style()->standardIcon(QStyle::SP_DialogApplyButton)},
+        {"Техника и оборудование", style()->standardIcon(QStyle::SP_ComputerIcon)}
+    };
+
+    for (const auto &t : types) {
+        QListWidgetItem *item = new QListWidgetItem(t.icon, t.name);
+        ui->lw_nsi_types->addItem(item);
+    }
+
+    // Выделяем второй пункт (Материалы) по умолчанию
+    ui->lw_nsi_types->setCurrentRow(1);
+}
+
+void MainWidget::fillDemoNSIMaterials()
+{
+    ui->lw_nsi_content->clear();
+    ui->lw_nsi_content->setSpacing(2);
+
+    struct MaterialDemo {
+        QString name;
+        QString category;
+        QString unit;
+    };
+
+    QList<MaterialDemo> materials = {
+        {"Бетон марки М300", "Фундамент", "м³"},
+        {"Арматура А500С 12мм", "Металлопрокат", "тн"},
+        {"Брус сосновый 150х150", "Пиломатериалы", "м³"},
+        {"Газобетонный блок D500", "Стеновые материалы", "м³"},
+        {"Кирпич керамический", "Стеновые материалы", "шт"},
+        {"Минвата 'Технониколь'", "Утеплители", "м²"},
+        {"Профнастил кровельный", "Кровля", "м²"},
+        {"Доска обрезная 25х150", "Пиломатериалы", "м³"}
+    };
+
+    for (const auto &m : materials) {
+        // Формируем текст: Название жирным, категория и ед.изм. мелким шрифтом
+        QString itemText = QString("%1\nРаздел: %2 | Ед. изм: %3")
+                               .arg(m.name, m.category, m.unit);
+
+        QListWidgetItem *item = new QListWidgetItem(itemText);
+
+        ui->lw_nsi_content->addItem(item);
+    }
+
+    // Применяем стили для выделения
+    ui->lw_nsi_content->setStyleSheet(
+        "QListWidget::item { padding: 8px; border-bottom: 1px solid #f0f0f0; }"
+        "QListWidget::item:selected { background-color: #f5f5f5; color: #333; border-left: 5px solid #1976d2; }"
+        );
+}
+
+void MainWidget::fillDemoDashboard()
+{
+    // 1. ЗАПОЛНЕНИЕ КАРТОЧЕК СТАТИСТИКИ
+    // Используем HTML-теги для разного размера шрифта в одном лейбле
+
+    // Карточка: Проекты
+    ui->lb_stat_projects->setText(
+        "<p align='center'><span style='font-size:10pt; color:#666;'>АКТИВНЫЕ ПРОЕКТЫ</span><br>"
+        "<span style='font-size:24pt; font-weight:bold; color:#1976D2;'>8</span><br>"
+        "<span style='font-size:9pt; color:green;'>+2 за этот месяц</span></p>"
+        );
+
+    // Карточка: Клиенты
+    ui->lb_stat_clients->setText(
+        "<p align='center'><span style='font-size:10pt; color:#666;'>ВСЕГО КЛИЕНТОВ</span><br>"
+        "<span style='font-size:24pt; font-weight:bold; color:#388E3C;'>42</span><br>"
+        "<span style='font-size:9pt; color:#666;'>15 активных договоров</span></p>"
+        );
+
+    // Карточка: Финансы
+    ui->lb_stat_finance->setText(
+        "<p align='center'><span style='font-size:10pt; color:#666;'>ОЖИДАЕМЫЕ ПЛАТЕЖИ</span><br>"
+        "<span style='font-size:20pt; font-weight:bold; color:#E65100;'>1.28 млн ₽</span><br>"
+        "<span style='font-size:9pt; color:red;'>3 задолженности</span></p>"
+        );
+
+    // Карточка: Создать клиента
+    ui->lb_new_client_card->setText(
+        "<p align='center'><span style='font-size:10pt; color:#666;'>НОВЫЙ КЛИЕНТ</span><br>"
+        "<span style='font-size:24pt; font-weight:bold; color:#1976D2;'>👤+</span><br>"
+        "<span style='font-size:9pt; color:#1976D2;'>Добавить в базу</span></p>"
+        );
+
+    // Карточка: Создать проект
+    ui->lb_new_project_card->setText(
+        "<p align='center'><span style='font-size:10pt; color:#666;'>НОВЫЙ ПРОЕКТ</span><br>"
+        "<span style='font-size:24pt; font-weight:bold; color:#1976D2;'>🏗️</span><br>"
+        "<span style='font-size:9pt; color:#1976D2;'>Начать планирование</span></p>"
+        );
+
+    // 2. НАСТРОЙКА ТАБЛИЦЫ ДЕДЛАЙНОВ (tw_home_deadlines)
+    ui->tw_home_deadlines->setColumnCount(4);
+    ui->tw_home_deadlines->setHorizontalHeaderLabels({
+        "Проект", "Задача / Этап", "Срок", "Статус"
+    });
+
+    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+
+    ui->tw_home_deadlines->setRowCount(0);
+
+    // 3. ТЕСТОВЫЕ ДАННЫЕ ДЛЯ ТАБЛИЦЫ
+    struct DeadlineDemo {
+        QString project;
+        QString task;
+        QString date;
+        QString priority; // "High", "Normal", "Overdue"
+    };
+
+    QList<DeadlineDemo> deadlines = {
+        {"Гараж на 2 авто", "Заливка фундамента", "05.05.2026", "Overdue"},
+        {"Коттедж 'Скандинавия'", "Монтаж стропил", "10.05.2026", "High"},
+        {"Гостевой дом", "Подписание акта сдачи", "12.05.2026", "Normal"},
+        {"Вилла 'Майами'", "Закупка арматуры", "15.05.2026", "Normal"},
+        {"Реконструкция", "Демонтаж перекрытий", "20.05.2026", "Normal"}
+    };
+
+    // 4. ЗАПОЛНЕНИЕ ТАБЛИЦЫ С ИНДИКАЦИЕЙ
+    for (int i = 0; i < deadlines.size(); ++i) {
+        ui->tw_home_deadlines->insertRow(i);
+
+        ui->tw_home_deadlines->setItem(i, 0, new QTableWidgetItem(deadlines[i].project));
+        ui->tw_home_deadlines->setItem(i, 1, new QTableWidgetItem(deadlines[i].task));
+
+        QTableWidgetItem *dateItem = new QTableWidgetItem(deadlines[i].date);
+        dateItem->setTextAlignment(Qt::AlignCenter);
+        ui->tw_home_deadlines->setItem(i, 2, dateItem);
+
+        // Статус с цветовой индикацией важности
+        QTableWidgetItem *statusItem = new QTableWidgetItem();
+        if (deadlines[i].priority == "Overdue") {
+            statusItem->setText("🛑 ПРОСРОЧЕНО");
+            statusItem->setForeground(Qt::red);
+            dateItem->setForeground(Qt::red); // Красная дата для просрочки
+        } else if (deadlines[i].priority == "High") {
+            statusItem->setText("⚠️ СРОЧНО");
+            statusItem->setForeground(QColor(255, 140, 0)); // Оранжевый
+        } else {
+            statusItem->setText("📅 В ПЛАНЕ");
+            statusItem->setForeground(Qt::gray);
+        }
+
+        statusItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+        statusItem->setTextAlignment(Qt::AlignCenter);
+        ui->tw_home_deadlines->setItem(i, 3, statusItem);
+    }
+
+    // Тонкие настройки таблицы
+    ui->tw_home_deadlines->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_home_deadlines->verticalHeader()->setVisible(false);
+    ui->tw_home_deadlines->setShowGrid(false); // Для современного "чистого" вида
 }

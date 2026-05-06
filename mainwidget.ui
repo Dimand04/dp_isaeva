@@ -139,7 +139,7 @@
      </widget>
      <widget class="QStackedWidget" name="sw_main">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="page_main">
        <layout class="QGridLayout" name="gridLayout_25">
@@ -174,7 +174,7 @@
              </property>
              <layout class="QGridLayout" name="gridLayout_26">
               <item row="0" column="0">
-               <widget class="QLabel" name="label_22">
+               <widget class="QLabel" name="lb_stat_projects">
                 <property name="minimumSize">
                  <size>
                   <width>0</width>
@@ -190,7 +190,7 @@
                </widget>
               </item>
               <item row="0" column="1">
-               <widget class="QLabel" name="label_23">
+               <widget class="QLabel" name="lb_stat_clients">
                 <property name="frameShape">
                  <enum>QFrame::Shape::Box</enum>
                 </property>
@@ -200,7 +200,7 @@
                </widget>
               </item>
               <item row="0" column="2">
-               <widget class="QLabel" name="label_24">
+               <widget class="QLabel" name="lb_stat_finance">
                 <property name="frameShape">
                  <enum>QFrame::Shape::Box</enum>
                 </property>
@@ -229,7 +229,7 @@
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="QTableWidget" name="tableWidget_10"/>
+               <widget class="QTableWidget" name="tw_home_deadlines"/>
               </item>
              </layout>
             </widget>
@@ -243,31 +243,30 @@
               <enum>QFrame::Shadow::Raised</enum>
              </property>
              <layout class="QGridLayout" name="gridLayout_28">
-              <item row="0" column="0">
-               <widget class="QLabel" name="label_26">
-                <property name="text">
-                 <string>Быстрый доступ</string>
-                </property>
-               </widget>
-              </item>
               <item row="1" column="0">
-               <widget class="QPushButton" name="pushButton_9">
+               <widget class="QLabel" name="lb_new_client_card">
+                <property name="frameShape">
+                 <enum>QFrame::Shape::Box</enum>
+                </property>
                 <property name="text">
-                 <string>Создать</string>
+                 <string/>
                 </property>
                </widget>
               </item>
               <item row="1" column="1">
-               <widget class="QPushButton" name="pushButton_10">
+               <widget class="QLabel" name="lb_new_project_card">
+                <property name="frameShape">
+                 <enum>QFrame::Shape::Box</enum>
+                </property>
                 <property name="text">
-                 <string>Создать</string>
+                 <string/>
                 </property>
                </widget>
               </item>
-              <item row="1" column="2">
-               <widget class="QPushButton" name="pushButton_11">
+              <item row="0" column="0" colspan="2">
+               <widget class="QLabel" name="label_26">
                 <property name="text">
-                 <string>Создать</string>
+                 <string>Быстрый доступ</string>
                 </property>
                </widget>
               </item>
@@ -1096,7 +1095,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>248</width>
-                  <height>710</height>
+                  <height>26</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_catalog">
@@ -1138,7 +1137,7 @@
                 <item row="4" column="0">
                  <widget class="QTabWidget" name="tabWidget_2">
                   <property name="currentIndex">
-                   <number>0</number>
+                   <number>1</number>
                   </property>
                   <widget class="QWidget" name="tab_5">
                    <attribute name="title">
@@ -1158,7 +1157,17 @@
                      <number>3</number>
                     </property>
                     <item row="0" column="0">
-                     <widget class="QTableWidget" name="tableWidget_5"/>
+                     <widget class="QTableWidget" name="tw_catalog_params">
+                      <property name="editTriggers">
+                       <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+                      </property>
+                      <property name="selectionMode">
+                       <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+                      </property>
+                      <attribute name="verticalHeaderVisible">
+                       <bool>false</bool>
+                      </attribute>
+                     </widget>
                     </item>
                    </layout>
                   </widget>
@@ -1180,7 +1189,7 @@
                      <number>3</number>
                     </property>
                     <item row="0" column="0">
-                     <widget class="QTableWidget" name="tableWidget_6"/>
+                     <widget class="QTableWidget" name="tw_catalog_estimate"/>
                     </item>
                    </layout>
                   </widget>
@@ -1269,7 +1278,10 @@
             <property name="bottomMargin">
              <number>3</number>
             </property>
-            <item row="3" column="0">
+            <item row="1" column="0">
+             <widget class="QComboBox" name="cb_export_file_type"/>
+            </item>
+            <item row="4" column="0">
              <widget class="QPushButton" name="pushButton_8">
               <property name="text">
                <string>Сгенерировать отчёт</string>
@@ -1277,12 +1289,9 @@
              </widget>
             </item>
             <item row="0" column="0">
-             <widget class="QComboBox" name="comboBox_4"/>
+             <widget class="QComboBox" name="cb_export_project_select"/>
             </item>
-            <item row="1" column="0">
-             <widget class="QComboBox" name="comboBox_5"/>
-            </item>
-            <item row="2" column="0">
+            <item row="3" column="0">
              <spacer name="verticalSpacer_3">
               <property name="orientation">
                <enum>Qt::Orientation::Vertical</enum>
@@ -1295,6 +1304,9 @@
               </property>
              </spacer>
             </item>
+            <item row="2" column="0">
+             <widget class="QComboBox" name="cb_export_format"/>
+            </item>
            </layout>
           </widget>
           <widget class="QFrame" name="frame_9">
@@ -1304,19 +1316,30 @@
            <property name="frameShadow">
             <enum>QFrame::Shadow::Raised</enum>
            </property>
-           <widget class="QLabel" name="label_21">
-            <property name="geometry">
-             <rect>
-              <x>206</x>
-              <y>50</y>
-              <width>109</width>
-              <height>20</height>
-             </rect>
+           <layout class="QGridLayout" name="gridLayout_37">
+            <property name="leftMargin">
+             <number>3</number>
             </property>
-            <property name="text">
-             <string>Предпросмотр</string>
+            <property name="topMargin">
+             <number>3</number>
             </property>
-           </widget>
+            <property name="rightMargin">
+             <number>3</number>
+            </property>
+            <property name="bottomMargin">
+             <number>3</number>
+            </property>
+            <item row="0" column="0">
+             <widget class="QTableWidget" name="tw_report_data"/>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="lb_total_info">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </widget>
          </widget>
         </item>
@@ -1339,7 +1362,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="tabWidget_4">
           <property name="currentIndex">
-           <number>0</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="tab_11">
            <attribute name="title">
@@ -1412,7 +1435,7 @@
                  </widget>
                 </item>
                 <item row="4" column="0" colspan="3">
-                 <widget class="QListWidget" name="listWidget_4"/>
+                 <widget class="QListWidget" name="lw_admin_users"/>
                 </item>
                </layout>
               </widget>
@@ -1444,7 +1467,7 @@
                  </widget>
                 </item>
                 <item row="1" column="0">
-                 <widget class="QTableWidget" name="tableWidget_11"/>
+                 <widget class="QListWidget" name="lw_admin_permissions"/>
                 </item>
                </layout>
               </widget>
@@ -1474,7 +1497,7 @@
               <property name="orientation">
                <enum>Qt::Orientation::Horizontal</enum>
               </property>
-              <widget class="QListWidget" name="listWidget_5"/>
+              <widget class="QListWidget" name="lw_nsi_types"/>
               <widget class="QFrame" name="frame_16">
                <property name="frameShape">
                 <enum>QFrame::Shape::StyledPanel</enum>
@@ -1505,7 +1528,7 @@
                  </widget>
                 </item>
                 <item row="2" column="0" colspan="3">
-                 <widget class="QListWidget" name="listWidget_6"/>
+                 <widget class="QListWidget" name="lw_nsi_content"/>
                 </item>
                 <item row="0" column="0" colspan="3">
                  <widget class="QLineEdit" name="lineEdit_14">
@@ -1525,6 +1548,9 @@
             <string>Настройки</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_36">
+            <item row="1" column="1">
+             <widget class="QLineEdit" name="lineEdit_16"/>
+            </item>
             <item row="0" column="0">
              <widget class="QLabel" name="label_28">
               <property name="text">
@@ -1535,15 +1561,15 @@
             <item row="0" column="1">
              <widget class="QLineEdit" name="lineEdit_15"/>
             </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_29">
+            <item row="3" column="0">
+             <widget class="QLabel" name="label_31">
               <property name="text">
-               <string>Юридический адрес:</string>
+               <string>Логотип:</string>
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
-             <widget class="QLineEdit" name="lineEdit_16"/>
+            <item row="2" column="1">
+             <widget class="QLineEdit" name="lineEdit_17"/>
             </item>
             <item row="2" column="0">
              <widget class="QLabel" name="label_30">
@@ -1552,18 +1578,20 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
-             <widget class="QLineEdit" name="lineEdit_17"/>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_31">
-              <property name="text">
-               <string>Логотип:</string>
-              </property>
-             </widget>
-            </item>
             <item row="3" column="1">
              <widget class="QLabel" name="label_32">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>100</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>100</width>
+                <height>100</height>
+               </size>
+              </property>
               <property name="frameShape">
                <enum>QFrame::Shape::Box</enum>
               </property>
@@ -1571,6 +1599,26 @@
                <string/>
               </property>
              </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_29">
+              <property name="text">
+               <string>Юридический адрес:</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <spacer name="verticalSpacer_4">
+              <property name="orientation">
+               <enum>Qt::Orientation::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
             </item>
            </layout>
           </widget>
