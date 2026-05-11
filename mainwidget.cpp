@@ -1,5 +1,10 @@
 #include "mainwidget.h"
 #include "ui_mainwidget.h"
+#include <QMessageBox>
+#include <QSettings>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
 
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
@@ -14,6 +19,9 @@ MainWidget::MainWidget(int userId, QWidget *parent)
 
     connect(ui->lw_main, &QListWidget::currentRowChanged, this, &MainWidget::sw_main_change);
     connect(ui->splitter_4, &QSplitter::splitterMoved, this, &MainWidget::updateCatalogLayout);
+    connect(ui->pb_logout, &QPushButton::clicked, this, &MainWidget::logout);
+
+    loadUserInfo();
 
     fillDemoClients();
     fillDemoClientDetails();
@@ -76,6 +84,36 @@ void MainWidget::sw_main_change(int index)
 
     default:
         break;
+    }
+}
+
+void MainWidget::logout()
+{
+    auto result = QMessageBox::question(this, "Выход", "Вы действительно хотите выйти из учетной записи?");
+    if (result == QMessageBox::No) return;
+
+    QSettings settings(qApp->applicationDirPath() + "/config.ini", QSettings::IniFormat);
+    settings.setValue("auth/staySignedIn", false);
+    settings.remove("auth/savedUserId");
+
+    qApp->exit(1000);
+}
+
+void MainWidget::loadUserInfo()
+{
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isValid() || !db.isOpen()) return;
+
+    QSqlQuery query(db);
+    query.prepare("SELECT login FROM users where id = ?");
+    query.addBindValue(userId);
+    if (query.exec()) {
+        if (query.next()) {
+            QString login = query.value(0).toString();
+            ui->lb_nick->setText(login);
+        }
+    } else {
+        qCritical() << "Ошибка загрузки информации о пользователе:" << query.lastError().text();
     }
 }
 

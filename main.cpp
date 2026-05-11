@@ -4,8 +4,10 @@
 #include <QApplication>
 #include "authwidget.h"
 
+int userId = -1;
+
 bool setupDatabaseConnection() {
-    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL", "db_dp_isaeva");
+    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
     db.setHostName("127.0.0.1");
     db.setPort(3306);
     db.setDatabaseName("db_dp_isaeva");
@@ -21,19 +23,36 @@ bool setupDatabaseConnection() {
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
+    int currentExitCode = 0;
 
-    if (!setupDatabaseConnection())
-        return 1;
+    do {
+        QApplication a(argc, argv);
 
-    authWidget auth;
-    if (auth.exec() == QDialog::Accepted) {
-        int userId = auth.getUserId();
+        if (!setupDatabaseConnection()) {
+            return 1;
+        }
 
-        MainWidget w(userId);
-        w.show();
-        return a.exec();
-    }
+        authWidget auth;
+        int targetUserId = -1;
 
-    return 0;
+        if (auth.checkAutoLogin()) {
+            targetUserId = auth.getUserId();
+        } else if (auth.exec() == QDialog::Accepted) {
+            targetUserId = auth.getUserId();
+        }
+
+        if (targetUserId != -1) {
+            ::userId = targetUserId;
+
+            MainWidget w(targetUserId);
+            w.show();
+
+            currentExitCode = a.exec();
+        } else {
+            currentExitCode = 0;
+        }
+
+    } while (currentExitCode == 1000);
+
+    return currentExitCode;
 }

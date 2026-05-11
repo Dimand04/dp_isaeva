@@ -21,6 +21,9 @@ public:
 private slots:
     void sw_main_change(int index);
 
+    void logout(); // выход из аккаунта
+    void loadUserInfo(); // загрузка ника пользователя
+
     // fake
     void fillDemoClients();
     void fillDemoClientDetails();

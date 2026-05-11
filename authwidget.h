@@ -6,6 +6,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QMessageBox>
+#include <QSettings>
 
 namespace Ui {
 class authWidget;
@@ -19,7 +20,9 @@ public:
     explicit authWidget(QWidget *parent = nullptr);
     ~authWidget();
 
-    int getUserId() const { return userId; }
+    int getUserId() const { return m_userId; }
+
+    bool checkAutoLogin();
 
 private slots:
     void loadUsers();
@@ -27,7 +30,7 @@ private slots:
 
 private:
     Ui::authWidget *ui;
-    int userId;
+    int m_userId = -1;
 };
 
 #endif // AUTHWIDGET_H
