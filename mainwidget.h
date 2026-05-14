@@ -15,7 +15,7 @@ class MainWidget : public QWidget
     Q_OBJECT
 
 public:
-    MainWidget(int userId, QWidget *parent = nullptr);
+    MainWidget(int m_userId, QWidget *parent = nullptr);
     ~MainWidget();
 
 private slots:
@@ -23,6 +23,7 @@ private slots:
 
     void logout(); // выход из аккаунта
     void loadUserInfo(); // загрузка ника пользователя
+    void loadAdminUsers(); // загрузка списка пользователей
 
     // fake
     void fillDemoClients();
@@ -43,7 +44,6 @@ private slots:
     void setupExportFilters();
     void fillExportPreviewDemo();
     void fillExportFileSelection(int projectIndex);
-    void fillDemoAdminUsers();
     void fillDemoAdminPermissions();
     void fillDemoNSITypes();
     void fillDemoNSIMaterials();
@@ -51,6 +51,6 @@ private slots:
     //
 private:
     Ui::MainWidget *ui;
-    int userId;
+    int m_userId;
 };
 #endif // MAINWIDGET_H

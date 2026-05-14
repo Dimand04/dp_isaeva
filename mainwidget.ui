@@ -375,7 +375,7 @@
             <item row="1" column="0" colspan="2">
              <widget class="QTabWidget" name="tabWidget">
               <property name="currentIndex">
-               <number>3</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="tab">
                <attribute name="title">
@@ -1088,7 +1088,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>248</width>
-                  <height>26</height>
+                  <height>710</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_catalog">

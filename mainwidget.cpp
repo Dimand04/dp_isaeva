@@ -9,20 +9,20 @@
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::MainWidget)
-    , userId(userId)
+    , m_userId(m_userId)
 {
     ui->setupUi(this);
 
     ui->splitter->setSizes({150, 800});
 
-    ui->sw_main->setCurrentIndex(0);
-
     connect(ui->lw_main, &QListWidget::currentRowChanged, this, &MainWidget::sw_main_change);
     connect(ui->splitter_4, &QSplitter::splitterMoved, this, &MainWidget::updateCatalogLayout);
     connect(ui->pb_logout, &QPushButton::clicked, this, &MainWidget::logout);
 
+    ui->lw_main->setCurrentRow(0);
     loadUserInfo();
 
+    //
     fillDemoClients();
     fillDemoClientDetails();
     fillDemoClientProjects();
@@ -39,11 +39,11 @@ MainWidget::MainWidget(int userId, QWidget *parent)
     fillDemoCatalogEstimate();
     setupExportFilters();
     fillExportPreviewDemo();
-    fillDemoAdminUsers();
     fillDemoAdminPermissions();
     fillDemoNSITypes();
     fillDemoNSIMaterials();
     fillDemoDashboard();
+    //
 }
 
 MainWidget::~MainWidget()
@@ -80,6 +80,9 @@ void MainWidget::sw_main_change(int index)
 
     case 5:
         qDebug() << "Администрирование";
+
+        loadAdminUsers();
+
         break;
 
     default:
@@ -92,9 +95,26 @@ void MainWidget::logout()
     auto result = QMessageBox::question(this, "Выход", "Вы действительно хотите выйти из учетной записи?");
     if (result == QMessageBox::No) return;
 
+    QSqlDatabase db = QSqlDatabase::database();
+    if (db.isOpen()) {
+        QSqlQuery query(db);
+        query.prepare("UPDATE auth SET remember_token = NULL WHERE id = :id");
+        query.bindValue(":id", m_userId);
+
+        if (!query.exec()) {
+            qWarning() << "Ошибка при удалении токена из БД:" << query.lastError().text();
+        }
+    }
+
     QSettings settings(qApp->applicationDirPath() + "/config.ini", QSettings::IniFormat);
-    settings.setValue("auth/staySignedIn", false);
-    settings.remove("auth/savedUserId");
+
+    settings.beginGroup("auth");
+    settings.setValue("staySignedIn", false);
+    settings.remove("token");
+    settings.remove("savedUserId");
+    settings.endGroup();
+
+    settings.sync();
 
     qApp->exit(1000);
 }
@@ -106,7 +126,7 @@ void MainWidget::loadUserInfo()
 
     QSqlQuery query(db);
     query.prepare("SELECT login FROM users where id = ?");
-    query.addBindValue(userId);
+    query.addBindValue(m_userId);
     if (query.exec()) {
         if (query.next()) {
             QString login = query.value(0).toString();
@@ -1009,33 +1029,46 @@ void MainWidget::fillExportFileSelection(int projectIndex)
     ui->cb_export_file_type->addItem("📦 3D-визуализация (рендер)", "model");
 }
 
-void MainWidget::fillDemoAdminUsers()
+void MainWidget::loadAdminUsers()
 {
     ui->lw_admin_users->clear();
     ui->lw_admin_users->setIconSize(QSize(32, 32));
 
-    struct UserDemo {
-        QString login;
-        QString role;
-        bool isAdmin;
-    };
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        qWarning() << "База данных не открыта!";
+        return;
+    }
 
-    QList<UserDemo> users = {
-        {"admin", "Администратор системы", true},
-        {"ivanov_manager", "Менеджер по продажам", false},
-        {"petrov_eng", "Инженер-проектировщик", false},
-        {"sidorov_boss", "Руководитель проектов", false},
-        {"kuznetsova_acc", "Бухгалтер", false}
-    };
+    QSqlQuery query(db);
+    query.prepare("SELECT u.id, u.login, r.name "
+                  "FROM users u "
+                  "LEFT JOIN roles r ON u.role_id = r.id "
+                  "ORDER BY u.login ASC");
 
-    for (const auto &u : users) {
-        // Формируем текст: Логин жирным, роль под ним
+    if (!query.exec()) {
+        qCritical() << "Ошибка при загрузке списка пользователей:" << query.lastError().text();
+        return;
+    }
+
+    while (query.next()) {
+        int userId = query.value(0).toInt();
+        QString login = query.value(1).toString();
+        QString roleName = query.value(2).toString();
+
+        if (roleName.isEmpty()) {
+            roleName = "Роль не назначена";
+        }
+
+        bool isAdmin = roleName.contains("Администратор", Qt::CaseInsensitive);
+
         QListWidgetItem *item = new QListWidgetItem();
-        item->setText(u.login + "\n" + u.role);
+        item->setText(login + "\n" + roleName);
 
-        // Устанавливаем иконку (используем стандартные для демо)
-        QIcon icon = style()->standardIcon(u.isAdmin ? QStyle::SP_ComputerIcon : QStyle::SP_DirHomeIcon);
+        QIcon icon = style()->standardIcon(isAdmin ? QStyle::SP_ComputerIcon : QStyle::SP_DirHomeIcon);
         item->setIcon(icon);
+
+        item->setData(Qt::UserRole, userId);
 
         ui->lw_admin_users->addItem(item);
     }

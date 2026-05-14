@@ -26,17 +26,24 @@ bool authWidget::checkAutoLogin()
 {
     QSettings settings(qApp->applicationDirPath() + "/config.ini", QSettings::IniFormat);
     bool stayIn = settings.value("auth/staySignedIn", false).toBool();
-    int savedId = settings.value("auth/savedUserId", -1).toInt();
+    QString savedToken = settings.value("auth/token", "").toString();
 
-    if (stayIn && savedId != -1) {
+    if (stayIn && !savedToken.isEmpty()) {
         QSqlDatabase db = QSqlDatabase::database();
+        if (!db.isOpen()) return false;
+
+        QString hashedToken = hashToken(savedToken);
+
         QSqlQuery query(db);
-        query.prepare("SELECT id FROM users WHERE id = :id");
-        query.bindValue(":id", savedId);
+        query.prepare("SELECT id FROM auth WHERE remember_token = :token");
+        query.bindValue(":token", hashedToken);
 
         if (query.exec() && query.next()) {
-            this->m_userId = savedId;
+            this->m_userId = query.value(0).toInt();
             return true;
+        } else {
+            settings.remove("auth/token");
+            settings.setValue("auth/staySignedIn", false);
         }
     }
     return false;
@@ -92,16 +99,33 @@ void authWidget::tryLogin()
             m_userId = selectedId;
 
             QSettings settings(qApp->applicationDirPath() + "/config.ini", QSettings::IniFormat);
+
             if (ui->ckb_stay_signed_in->isChecked()) {
-                settings.setValue("auth/savedUserId", m_userId);
+                QString rawToken = generateSecureToken();
+                QString hashedToken = hashToken(rawToken);
+
+                QSqlQuery updateQuery(db);
+                updateQuery.prepare("UPDATE auth SET remember_token = :token WHERE id = :id");
+                updateQuery.bindValue(":token", hashedToken);
+                updateQuery.bindValue(":id", m_userId);
+
+                if (!updateQuery.exec()) {
+                    qWarning() << "Не удалось сохранить токен в БД:" << updateQuery.lastError().text();
+                }
+
+                settings.setValue("auth/token", rawToken);
                 settings.setValue("auth/staySignedIn", true);
             } else {
-                settings.remove("auth/savedUserId");
+                QSqlQuery updateQuery(db);
+                updateQuery.prepare("UPDATE auth SET remember_token = NULL WHERE id = :id");
+                updateQuery.bindValue(":id", m_userId);
+                updateQuery.exec();
+
+                settings.remove("auth/token");
                 settings.setValue("auth/staySignedIn", false);
             }
 
             ::userId = m_userId;
-
             accept();
         } else {
             QMessageBox::warning(this, "Ошибка доступа", "Неверный пароль.");
@@ -112,4 +136,18 @@ void authWidget::tryLogin()
         qCritical() << "Ошибка SQL:" << query.lastError().text();
         QMessageBox::critical(this, "Ошибка", "Ошибка при проверке данных в БД.");
     }
+}
+
+QString authWidget::generateSecureToken()
+{
+    QByteArray randomBytes;
+    for (int i = 0; i < 32; ++i) {
+        randomBytes.append(static_cast<char>(QRandomGenerator::global()->bounded(256)));
+    }
+    return QString(randomBytes.toHex());
+}
+
+QString authWidget::hashToken(const QString &token)
+{
+    return QString(QCryptographicHash::hash(token.toUtf8(), QCryptographicHash::Sha256).toHex());
 }

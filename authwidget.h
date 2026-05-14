@@ -7,6 +7,8 @@
 #include <QSqlError>
 #include <QMessageBox>
 #include <QSettings>
+#include <QCryptographicHash>
+#include <QRandomGenerator>
 
 namespace Ui {
 class authWidget;
@@ -31,6 +33,9 @@ private slots:
 private:
     Ui::authWidget *ui;
     int m_userId = -1;
+
+    QString generateSecureToken();
+    QString hashToken(const QString &token);
 };
 
 #endif // AUTHWIDGET_H
