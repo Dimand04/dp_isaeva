@@ -24,6 +24,10 @@ private slots:
     void logout(); // выход из аккаунта
     void loadUserInfo(); // загрузка ника пользователя
     void loadAdminUsers(); // загрузка списка пользователей
+    void filterAdminUsers(const QString &searchText); // поиск по пользователям
+    void loadAdminRoles(); // загрузка списка ролей
+    void filterAdminRoles(const QString &searchText);
+    void openRoleEditor(int roleId = -1);
 
     // fake
     void fillDemoClients();

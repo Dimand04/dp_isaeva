@@ -11,15 +11,18 @@ CONFIG += c++17
 SOURCES += \
     authwidget.cpp \
     main.cpp \
-    mainwidget.cpp
+    mainwidget.cpp \
+    roleeditordialog.cpp
 
 HEADERS += \
     authwidget.h \
-    mainwidget.h
+    mainwidget.h \
+    roleeditordialog.h
 
 FORMS += \
     authwidget.ui \
-    mainwidget.ui
+    mainwidget.ui \
+    roleeditordialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

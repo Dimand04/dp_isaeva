@@ -5,6 +5,7 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
+#include "roleeditordialog.h"
 
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
@@ -18,6 +19,9 @@ MainWidget::MainWidget(int userId, QWidget *parent)
     connect(ui->lw_main, &QListWidget::currentRowChanged, this, &MainWidget::sw_main_change);
     connect(ui->splitter_4, &QSplitter::splitterMoved, this, &MainWidget::updateCatalogLayout);
     connect(ui->pb_logout, &QPushButton::clicked, this, &MainWidget::logout);
+    connect(ui->le_adminUserSearch, &QLineEdit::textChanged, this, &MainWidget::filterAdminUsers);
+    connect(ui->le_adminRoleSearch, &QLineEdit::textChanged, this, &MainWidget::filterAdminRoles);
+    connect(ui->pb_admin_role_create, &QPushButton::clicked, this, &MainWidget::openRoleEditor);
 
     ui->lw_main->setCurrentRow(0);
     loadUserInfo();
@@ -82,6 +86,7 @@ void MainWidget::sw_main_change(int index)
         qDebug() << "Администрирование";
 
         loadAdminUsers();
+        loadAdminRoles();
 
         break;
 
@@ -1074,9 +1079,73 @@ void MainWidget::loadAdminUsers()
     }
 }
 
+void MainWidget::filterAdminUsers(const QString &searchText)
+{
+    for (int i = 0; i < ui->lw_admin_users->count(); ++i) {
+        QListWidgetItem *item = ui->lw_admin_users->item(i);
+
+        bool match = item->text().contains(searchText, Qt::CaseInsensitive);
+
+        item->setHidden(!match);
+    }
+}
+
+void MainWidget::loadAdminRoles()
+{
+    ui->lw_admin_roles->clear();
+    ui->lw_admin_roles->setIconSize(QSize(32, 32));
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        qWarning() << "База данных не открыта!";
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT id, name FROM roles ORDER BY name ASC");
+
+    if (!query.exec()) {
+        qCritical() << "Ошибка при загрузке списка ролей:" << query.lastError().text();
+        return;
+    }
+
+    while (query.next()) {
+        int roleId = query.value(0).toInt();
+        QString roleName = query.value(1).toString();
+
+        QListWidgetItem *item = new QListWidgetItem();
+        item->setText(roleName);
+
+        QIcon icon = style()->standardIcon(QStyle::SP_FileDialogDetailedView);
+        item->setIcon(icon);
+
+        item->setData(Qt::UserRole, roleId);
+
+        ui->lw_admin_roles->addItem(item);
+    }
+}
+
+void MainWidget::filterAdminRoles(const QString &searchText)
+{
+    for (int i = 0; i < ui->lw_admin_roles->count(); ++i) {
+        QListWidgetItem *item = ui->lw_admin_roles->item(i);
+
+        bool match = item->text().contains(searchText, Qt::CaseInsensitive);
+
+        item->setHidden(!match);
+    }
+}
+
+void MainWidget::openRoleEditor(int roleId)
+{
+    RoleEditorDialog dialog(roleId, this);
+
+    dialog.exec();
+}
+
 void MainWidget::fillDemoAdminPermissions()
 {
-    ui->lw_admin_permissions->clear();
+    ui->lw_admin_roles->clear();
 
     // Список прав, соответствующих твоим вкладкам
     QStringList permissions = {
@@ -1092,7 +1161,7 @@ void MainWidget::fillDemoAdminPermissions()
     };
 
     for (const QString &text : permissions) {
-        QListWidgetItem *item = new QListWidgetItem(text, ui->lw_admin_permissions);
+        QListWidgetItem *item = new QListWidgetItem(text, ui->lw_admin_roles);
 
         // Включаем чекбокс для элемента
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
@@ -1104,7 +1173,7 @@ void MainWidget::fillDemoAdminPermissions()
             item->setCheckState(Qt::Unchecked);
         }
 
-        ui->lw_admin_permissions->addItem(item);
+        ui->lw_admin_roles->addItem(item);
     }
 }
 

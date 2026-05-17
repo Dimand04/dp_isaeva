@@ -132,7 +132,7 @@
      </widget>
      <widget class="QStackedWidget" name="sw_main">
       <property name="currentIndex">
-       <number>0</number>
+       <number>5</number>
       </property>
       <widget class="QWidget" name="page_main">
        <layout class="QGridLayout" name="gridLayout_25">
@@ -1088,7 +1088,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>248</width>
-                  <height>710</height>
+                  <height>26</height>
                  </rect>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_catalog">
@@ -1355,7 +1355,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="tabWidget_4">
           <property name="currentIndex">
-           <number>2</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="tab_11">
            <attribute name="title">
@@ -1399,24 +1399,13 @@
                 <property name="bottomMargin">
                  <number>3</number>
                 </property>
-                <item row="1" column="2">
-                 <widget class="QPushButton" name="pushButton_15">
-                  <property name="text">
-                   <string>Удалить</string>
-                  </property>
-                 </widget>
+                <item row="4" column="0" colspan="3">
+                 <widget class="QListWidget" name="lw_admin_users"/>
                 </item>
                 <item row="0" column="0" colspan="3">
-                 <widget class="QLineEdit" name="lineEdit_13">
+                 <widget class="QLineEdit" name="le_adminUserSearch">
                   <property name="placeholderText">
-                   <string>Поиск</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QPushButton" name="pushButton_14">
-                  <property name="text">
-                   <string>Редактировать</string>
+                   <string>Поиск по пользователям</string>
                   </property>
                  </widget>
                 </item>
@@ -1427,8 +1416,19 @@
                   </property>
                  </widget>
                 </item>
-                <item row="4" column="0" colspan="3">
-                 <widget class="QListWidget" name="lw_admin_users"/>
+                <item row="1" column="2">
+                 <widget class="QPushButton" name="pushButton_15">
+                  <property name="text">
+                   <string>Удалить</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QPushButton" name="pushButton_14">
+                  <property name="text">
+                   <string>Редактировать</string>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </widget>
@@ -1452,15 +1452,36 @@
                 <property name="bottomMargin">
                  <number>3</number>
                 </property>
-                <item row="0" column="0">
-                 <widget class="QLabel" name="label_27">
+                <item row="1" column="1">
+                 <widget class="QPushButton" name="pushButton_10">
                   <property name="text">
-                   <string>Права доступа</string>
+                   <string>Редактировать</string>
                   </property>
                  </widget>
                 </item>
                 <item row="1" column="0">
-                 <widget class="QListWidget" name="lw_admin_permissions"/>
+                 <widget class="QPushButton" name="pushButton_9">
+                  <property name="text">
+                   <string>Создать</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QPushButton" name="pushButton_11">
+                  <property name="text">
+                   <string>Удалить</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0" colspan="3">
+                 <widget class="QLineEdit" name="le_adminRoleSearch">
+                  <property name="placeholderText">
+                   <string>Поиск по ролям</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0" colspan="3">
+                 <widget class="QListWidget" name="lw_admin_roles"/>
                 </item>
                </layout>
               </widget>
@@ -1500,7 +1521,7 @@
                </property>
                <layout class="QGridLayout" name="gridLayout_35">
                 <item row="1" column="0">
-                 <widget class="QPushButton" name="pushButton_16">
+                 <widget class="QPushButton" name="pb_admin_role_create">
                   <property name="text">
                    <string>Создать</string>
                   </property>
