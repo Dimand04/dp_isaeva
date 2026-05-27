@@ -28,6 +28,7 @@ MainWidget::MainWidget(int userId, QWidget *parent)
     connect(ui->pb_admin_user_create, &QPushButton::clicked, this, [this]() {
         openUserEditor(-1);
     });
+    connect(ui->le_nsi_search, &QLineEdit::textChanged, this, &MainWidget::filterNSITable);
 
     ui->lw_main->setCurrentRow(0);
     loadUserInfo();
@@ -50,8 +51,6 @@ MainWidget::MainWidget(int userId, QWidget *parent)
     setupExportFilters();
     fillExportPreviewDemo();
     fillDemoAdminPermissions();
-    fillDemoNSITypes();
-    fillDemoNSIMaterials();
     fillDemoDashboard();
     //
 }
@@ -101,6 +100,8 @@ void MainWidget::sw_main_change(int index)
 
         loadAdminUsers();
         loadAdminRoles();
+        fillNSITypes();
+        ui->splitter_8->setSizes({1, 0});
 
         break;
 
@@ -1224,69 +1225,39 @@ void MainWidget::fillDemoAdminPermissions()
     }
 }
 
-void MainWidget::fillDemoNSITypes()
+void MainWidget::fillNSITypes()
 {
+    ui->lw_nsi_types->blockSignals(true);
+
     ui->lw_nsi_types->clear();
     ui->lw_nsi_types->setIconSize(QSize(24, 24));
 
-    struct TypeDemo { QString name; QIcon icon; };
+    struct TypeDemo {
+        QString name;
+        QIcon icon;
+        QString systemKey;
+    };
 
-    // Используем стандартные иконки для наглядности
     QList<TypeDemo> types = {
-        {"Категории материалов", style()->standardIcon(QStyle::SP_DirIcon)},
-        {"Материалы", style()->standardIcon(QStyle::SP_FileIcon)},
-        {"Поставщики", style()->standardIcon(QStyle::SP_DirHomeIcon)},
-        {"Единицы измерения", style()->standardIcon(QStyle::SP_FileDialogContentsView)},
-        {"Виды строительных работ", style()->standardIcon(QStyle::SP_DialogApplyButton)},
-        {"Техника и оборудование", style()->standardIcon(QStyle::SP_ComputerIcon)}
+        {"Категории материалов", style()->standardIcon(QStyle::SP_DirIcon), "sys_categories"},
+        {"Материалы", style()->standardIcon(QStyle::SP_FileIcon), "sys_materials"},
+        {"Поставщики", style()->standardIcon(QStyle::SP_DirHomeIcon), "sys_suppliers"},
+        {"Единицы измерения", style()->standardIcon(QStyle::SP_FileDialogContentsView), "sys_units"},
+        {"Виды строительных работ", style()->standardIcon(QStyle::SP_DialogApplyButton), "sys_work_types"},
+        {"Техника и оборудование", style()->standardIcon(QStyle::SP_ComputerIcon), "sys_equipment"}
     };
 
     for (const auto &t : types) {
         QListWidgetItem *item = new QListWidgetItem(t.icon, t.name);
+
+        item->setData(Qt::UserRole, t.systemKey);
+
         ui->lw_nsi_types->addItem(item);
     }
 
-    // Выделяем второй пункт (Материалы) по умолчанию
+    ui->lw_nsi_types->blockSignals(false);
+
     ui->lw_nsi_types->setCurrentRow(1);
-}
-
-void MainWidget::fillDemoNSIMaterials()
-{
-    ui->lw_nsi_content->clear();
-    ui->lw_nsi_content->setSpacing(2);
-
-    struct MaterialDemo {
-        QString name;
-        QString category;
-        QString unit;
-    };
-
-    QList<MaterialDemo> materials = {
-        {"Бетон марки М300", "Фундамент", "м³"},
-        {"Арматура А500С 12мм", "Металлопрокат", "тн"},
-        {"Брус сосновый 150х150", "Пиломатериалы", "м³"},
-        {"Газобетонный блок D500", "Стеновые материалы", "м³"},
-        {"Кирпич керамический", "Стеновые материалы", "шт"},
-        {"Минвата 'Технониколь'", "Утеплители", "м²"},
-        {"Профнастил кровельный", "Кровля", "м²"},
-        {"Доска обрезная 25х150", "Пиломатериалы", "м³"}
-    };
-
-    for (const auto &m : materials) {
-        // Формируем текст: Название жирным, категория и ед.изм. мелким шрифтом
-        QString itemText = QString("%1\nРаздел: %2 | Ед. изм: %3")
-                               .arg(m.name, m.category, m.unit);
-
-        QListWidgetItem *item = new QListWidgetItem(itemText);
-
-        ui->lw_nsi_content->addItem(item);
-    }
-
-    // Применяем стили для выделения
-    ui->lw_nsi_content->setStyleSheet(
-        "QListWidget::item { padding: 8px; border-bottom: 1px solid #f0f0f0; }"
-        "QListWidget::item:selected { background-color: #f5f5f5; color: #333; border-left: 5px solid #1976d2; }"
-        );
 }
 
 void MainWidget::fillDemoDashboard()
@@ -1503,3 +1474,90 @@ void MainWidget::on_lw_admin_users_itemSelectionChanged()
     ui->pb_admin_user_delete->setEnabled(hasSelection);
 }
 
+
+void MainWidget::on_lw_nsi_types_itemSelectionChanged()
+{
+    QListWidgetItem *selectedItem = ui->lw_nsi_types->currentItem();
+    if (!selectedItem) return;
+
+    QString sysKey = selectedItem->data(Qt::UserRole).toString();
+
+    if (sysKey == "sys_categories") {
+        qDebug() << "Загрузка таблицы категорий...";
+        ui->splitter_8->setSizes({1, 1});
+        loadCategoriesTable();
+
+    } else if (sysKey == "sys_materials") {
+        qDebug() << "Загрузка таблицы материалов...";
+
+
+    } else if (sysKey == "sys_suppliers") {
+        qDebug() << "Загрузка таблицы поставщиков...";
+
+
+    } else if (sysKey == "sys_units") {
+        qDebug() << "Загрузка таблицы единиц измерения...";
+
+
+    } else {
+        qDebug() << "Раздел находится в разработке:" << sysKey;
+    }
+}
+
+void MainWidget::loadCategoriesTable()
+{
+    ui->tw_nsi->clear();
+    ui->tw_nsi->setColumnCount(1);
+    ui->tw_nsi->setHorizontalHeaderLabels(QStringList() << "Название категории");
+
+    ui->tw_nsi->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_nsi->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_nsi->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tw_nsi->verticalHeader()->setVisible(false);
+
+    ui->tw_nsi->setRowCount(0);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        qWarning() << "База данных не открыта!";
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT id, name FROM categories ORDER BY name ASC");
+
+    if (!query.exec()) {
+        qCritical() << "Ошибка при загрузке категорий:" << query.lastError().text();
+        return;
+    }
+
+    int row = 0;
+    while (query.next()) {
+        int categoryId = query.value(0).toInt();
+        QString categoryName = query.value(1).toString();
+
+        ui->tw_nsi->insertRow(row);
+
+        QTableWidgetItem *nameItem = new QTableWidgetItem(categoryName);
+
+        nameItem->setData(Qt::UserRole, categoryId);
+
+        ui->tw_nsi->setItem(row, 0, nameItem);
+
+        row++;
+    }
+}
+
+void MainWidget::filterNSITable(const QString &searchText)
+{
+    for (int row = 0; row < ui->tw_nsi->rowCount(); ++row) {
+
+        QTableWidgetItem *item = ui->tw_nsi->item(row, 0);
+
+        if (item) {
+            bool match = item->text().contains(searchText, Qt::CaseInsensitive);
+
+            ui->tw_nsi->setRowHidden(row, !match);
+        }
+    }
+}

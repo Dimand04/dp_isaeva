@@ -1355,7 +1355,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="tabWidget_4">
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="tab_11">
            <attribute name="title">
@@ -1399,13 +1399,10 @@
                 <property name="bottomMargin">
                  <number>3</number>
                 </property>
-                <item row="4" column="0" colspan="3">
-                 <widget class="QListWidget" name="lw_admin_users"/>
-                </item>
-                <item row="0" column="0" colspan="3">
-                 <widget class="QLineEdit" name="le_adminUserSearch">
-                  <property name="placeholderText">
-                   <string>Поиск по пользователям</string>
+                <item row="1" column="1">
+                 <widget class="QPushButton" name="pb_admin_user_edit">
+                  <property name="text">
+                   <string>Редактировать</string>
                   </property>
                  </widget>
                 </item>
@@ -1423,12 +1420,28 @@
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
-                 <widget class="QPushButton" name="pb_admin_user_edit">
-                  <property name="text">
-                   <string>Редактировать</string>
+                <item row="1" column="3">
+                 <spacer name="horizontalSpacer_5">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="0" column="0" colspan="4">
+                 <widget class="QLineEdit" name="le_adminUserSearch">
+                  <property name="placeholderText">
+                   <string>Поиск по пользователям</string>
                   </property>
                  </widget>
+                </item>
+                <item row="4" column="0" colspan="4">
+                 <widget class="QListWidget" name="lw_admin_users"/>
                 </item>
                </layout>
               </widget>
@@ -1452,13 +1465,6 @@
                 <property name="bottomMargin">
                  <number>3</number>
                 </property>
-                <item row="1" column="1">
-                 <widget class="QPushButton" name="pb_admin_role_edit">
-                  <property name="text">
-                   <string>Редактировать</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="1" column="0">
                  <widget class="QPushButton" name="pb_admin_role_create">
                   <property name="text">
@@ -1473,14 +1479,34 @@
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="0" colspan="3">
+                <item row="1" column="1">
+                 <widget class="QPushButton" name="pb_admin_role_edit">
+                  <property name="text">
+                   <string>Редактировать</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="3">
+                 <spacer name="horizontalSpacer_6">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item row="0" column="0" colspan="4">
                  <widget class="QLineEdit" name="le_adminRoleSearch">
                   <property name="placeholderText">
                    <string>Поиск по ролям</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="0" colspan="3">
+                <item row="2" column="0" colspan="4">
                  <widget class="QListWidget" name="lw_admin_roles"/>
                 </item>
                </layout>
@@ -1511,7 +1537,14 @@
               <property name="orientation">
                <enum>Qt::Orientation::Horizontal</enum>
               </property>
-              <widget class="QListWidget" name="lw_nsi_types"/>
+              <widget class="QListWidget" name="lw_nsi_types">
+               <property name="minimumSize">
+                <size>
+                 <width>100</width>
+                 <height>0</height>
+                </size>
+               </property>
+              </widget>
               <widget class="QFrame" name="frame_16">
                <property name="frameShape">
                 <enum>QFrame::Shape::StyledPanel</enum>
@@ -1520,17 +1553,17 @@
                 <enum>QFrame::Shadow::Raised</enum>
                </property>
                <layout class="QGridLayout" name="gridLayout_35">
-                <item row="1" column="0">
-                 <widget class="QPushButton" name="pushButton_16">
-                  <property name="text">
-                   <string>Создать</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="1" column="1">
                  <widget class="QPushButton" name="pushButton_17">
                   <property name="text">
                    <string>Редактировать</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QPushButton" name="pushButton_16">
+                  <property name="text">
+                   <string>Создать</string>
                   </property>
                  </widget>
                 </item>
@@ -1541,15 +1574,28 @@
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="0" colspan="3">
-                 <widget class="QListWidget" name="lw_nsi_content"/>
+                <item row="1" column="3">
+                 <spacer name="horizontalSpacer_4">
+                  <property name="orientation">
+                   <enum>Qt::Orientation::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
                 </item>
-                <item row="0" column="0" colspan="3">
-                 <widget class="QLineEdit" name="lineEdit_14">
+                <item row="0" column="0" colspan="4">
+                 <widget class="QLineEdit" name="le_nsi_search">
                   <property name="placeholderText">
                    <string>Поиск</string>
                   </property>
                  </widget>
+                </item>
+                <item row="2" column="0" colspan="4">
+                 <widget class="QTableWidget" name="tw_nsi"/>
                 </item>
                </layout>
               </widget>

@@ -29,6 +29,9 @@ private slots:
     void filterAdminRoles(const QString &searchText); // поиск по ролям
     void openRoleEditor(int roleId = -1); // вызов roleeditordialog
     void openUserEditor(int targetUserId = -1); // вызов usereditordialog
+    void fillNSITypes(); // отрисовка таблицы справочников
+    void loadCategoriesTable(); // загрузка таблицы категорий
+    void filterNSITable(const QString &searchText); // поиск по категориям
 
     // fake
     void fillDemoClients();
@@ -50,8 +53,6 @@ private slots:
     void fillExportPreviewDemo();
     void fillExportFileSelection(int projectIndex);
     void fillDemoAdminPermissions();
-    void fillDemoNSITypes();
-    void fillDemoNSIMaterials();
     void fillDemoDashboard();
     //
 
@@ -64,6 +65,8 @@ private slots:
     void on_lw_admin_users_itemSelectionChanged(); // выбор пользователя
 
     void on_pb_admin_user_edit_clicked(); // редактирование пользователя
+
+    void on_lw_nsi_types_itemSelectionChanged(); // выбор справочника
 
 private:
     Ui::MainWidget *ui;
