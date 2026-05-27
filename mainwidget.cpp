@@ -6,6 +6,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include "roleeditordialog.h"
+#include "usereditordialog.h"
 
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
@@ -21,7 +22,12 @@ MainWidget::MainWidget(int userId, QWidget *parent)
     connect(ui->pb_logout, &QPushButton::clicked, this, &MainWidget::logout);
     connect(ui->le_adminUserSearch, &QLineEdit::textChanged, this, &MainWidget::filterAdminUsers);
     connect(ui->le_adminRoleSearch, &QLineEdit::textChanged, this, &MainWidget::filterAdminRoles);
-    connect(ui->pb_admin_role_create, &QPushButton::clicked, this, &MainWidget::openRoleEditor);
+    connect(ui->pb_admin_role_create, &QPushButton::clicked, this, [this]() {
+        openRoleEditor(-1);
+    });
+    connect(ui->pb_admin_user_create, &QPushButton::clicked, this, [this]() {
+        openUserEditor(-1);
+    });
 
     ui->lw_main->setCurrentRow(0);
     loadUserInfo();
@@ -84,6 +90,14 @@ void MainWidget::sw_main_change(int index)
 
     case 5:
         qDebug() << "Администрирование";
+
+        ui->pb_admin_role_create->setEnabled(true);
+        ui->pb_admin_role_edit->setEnabled(false);
+        ui->pb_admin_role_delete->setEnabled(false);
+
+        ui->pb_admin_user_create->setEnabled(true);
+        ui->pb_admin_user_edit->setEnabled(false);
+        ui->pb_admin_user_delete->setEnabled(false);
 
         loadAdminUsers();
         loadAdminRoles();
@@ -1036,6 +1050,8 @@ void MainWidget::fillExportFileSelection(int projectIndex)
 
 void MainWidget::loadAdminUsers()
 {
+    ui->lw_admin_users->blockSignals(true);
+
     ui->lw_admin_users->clear();
     ui->lw_admin_users->setIconSize(QSize(32, 32));
 
@@ -1077,6 +1093,8 @@ void MainWidget::loadAdminUsers()
 
         ui->lw_admin_users->addItem(item);
     }
+
+    ui->lw_admin_users->blockSignals(false);
 }
 
 void MainWidget::filterAdminUsers(const QString &searchText)
@@ -1092,6 +1110,8 @@ void MainWidget::filterAdminUsers(const QString &searchText)
 
 void MainWidget::loadAdminRoles()
 {
+    ui->lw_admin_roles->blockSignals(true);
+
     ui->lw_admin_roles->clear();
     ui->lw_admin_roles->setIconSize(QSize(32, 32));
 
@@ -1123,6 +1143,8 @@ void MainWidget::loadAdminRoles()
 
         ui->lw_admin_roles->addItem(item);
     }
+
+    ui->lw_admin_roles->blockSignals(false);
 }
 
 void MainWidget::filterAdminRoles(const QString &searchText)
@@ -1140,7 +1162,32 @@ void MainWidget::openRoleEditor(int roleId)
 {
     RoleEditorDialog dialog(roleId, this);
 
-    dialog.exec();
+    if (dialog.exec() == QDialog::Accepted) {
+
+        loadAdminRoles();
+
+        if (roleId == -1) {
+            QMessageBox::information(this, "Успех", "Новая роль успешно создана!");
+        } else {
+            QMessageBox::information(this, "Успех", "Права и название роли успешно обновлены!");
+        }
+    }
+}
+
+void MainWidget::openUserEditor(int targetUserId)
+{
+    UserEditorDialog dialog(targetUserId, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+
+        loadAdminUsers();
+
+        if (targetUserId == -1) {
+            QMessageBox::information(this, "Успех", "Новый пользователь успешно создан!");
+        } else {
+            QMessageBox::information(this, "Успех", "Данные пользователя успешно обновлены!");
+        }
+    }
 }
 
 void MainWidget::fillDemoAdminPermissions()
@@ -1346,3 +1393,113 @@ void MainWidget::fillDemoDashboard()
     ui->tw_home_deadlines->verticalHeader()->setVisible(false);
     ui->tw_home_deadlines->setShowGrid(false); // Для современного "чистого" вида
 }
+
+void MainWidget::on_lw_admin_roles_itemSelectionChanged()
+{
+    bool hasSelection = (ui->lw_admin_roles->currentItem() != nullptr);
+    ui->pb_admin_role_edit->setEnabled(hasSelection);
+    ui->pb_admin_role_delete->setEnabled(hasSelection);
+}
+
+void MainWidget::on_pb_admin_role_edit_clicked()
+{
+    QListWidgetItem *selectedItem = ui->lw_admin_roles->currentItem();
+
+    if (!selectedItem) {
+        QMessageBox::warning(this, "Внимание", "Пожалуйста, выберите роль из списка для редактирования.");
+        return;
+    }
+
+    int roleId = selectedItem->data(Qt::UserRole).toInt();
+
+    openRoleEditor(roleId);
+}
+
+
+void MainWidget::on_pb_admin_role_delete_clicked()
+{
+    QListWidgetItem *selectedItem = ui->lw_admin_roles->currentItem();
+    if (!selectedItem) {
+        QMessageBox::warning(this, "Внимание", "Выберите роль для удаления.");
+        return;
+    }
+
+    int roleId = selectedItem->data(Qt::UserRole).toInt();
+    QString roleName = selectedItem->text();
+
+    if (roleId == 1) {
+        QMessageBox::critical(this, "Ошибка", "Базовую роль Администратора удалить нельзя!");
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database();
+
+    QSqlQuery checkQuery(db);
+    checkQuery.prepare("SELECT COUNT(id) FROM users WHERE role_id = :role_id");
+    checkQuery.bindValue(":role_id", roleId);
+
+    if (checkQuery.exec() && checkQuery.next()) {
+        int usersCount = checkQuery.value(0).toInt();
+
+        if (usersCount > 0) {
+            QMessageBox::warning(this, "Удаление запрещено",
+                                 QString("Невозможно удалить роль «%1», так как она назначена %2 пользователям.\n\n"
+                                         "Сначала измените роли у этих пользователей.")
+                                     .arg(roleName).arg(usersCount));
+            return;
+        }
+    }
+
+    auto reply = QMessageBox::question(this, "Подтверждение",
+                                       QString("Вы действительно хотите безвозвратно удалить роль «%1»?").arg(roleName),
+                                       QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::No) return;
+
+    db.transaction();
+
+    QSqlQuery deleteAccess(db);
+    deleteAccess.prepare("DELETE FROM role_access WHERE role_id = :role_id");
+    deleteAccess.bindValue(":role_id", roleId);
+    if (!deleteAccess.exec()) {
+        db.rollback();
+        qWarning() << "Ошибка удаления прав:" << deleteAccess.lastError().text();
+        return;
+    }
+
+    QSqlQuery deleteRole(db);
+    deleteRole.prepare("DELETE FROM roles WHERE id = :id");
+    deleteRole.bindValue(":id", roleId);
+
+    if (deleteRole.exec()) {
+        db.commit();
+        QMessageBox::information(this, "Успех", "Роль успешно удалена.");
+        loadAdminRoles();
+    } else {
+        db.rollback();
+        QMessageBox::critical(this, "Ошибка", "Не удалось удалить роль:\n" + deleteRole.lastError().text());
+    }
+}
+
+
+void MainWidget::on_pb_admin_user_edit_clicked()
+{
+    QListWidgetItem *selectedItem = ui->lw_admin_users->currentItem();
+    if (!selectedItem) {
+        QMessageBox::warning(this, "Внимание", "Выберите пользователя для редактирования.");
+        return;
+    }
+
+    int targetUserId = selectedItem->data(Qt::UserRole).toInt();
+
+    openUserEditor(targetUserId);
+}
+
+
+void MainWidget::on_lw_admin_users_itemSelectionChanged()
+{
+    bool hasSelection = (ui->lw_admin_users->currentItem() != nullptr);
+    ui->pb_admin_user_edit->setEnabled(hasSelection);
+    ui->pb_admin_user_delete->setEnabled(hasSelection);
+}
+

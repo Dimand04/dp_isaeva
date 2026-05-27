@@ -26,8 +26,9 @@ private slots:
     void loadAdminUsers(); // загрузка списка пользователей
     void filterAdminUsers(const QString &searchText); // поиск по пользователям
     void loadAdminRoles(); // загрузка списка ролей
-    void filterAdminRoles(const QString &searchText);
-    void openRoleEditor(int roleId = -1);
+    void filterAdminRoles(const QString &searchText); // поиск по ролям
+    void openRoleEditor(int roleId = -1); // вызов roleeditordialog
+    void openUserEditor(int targetUserId = -1); // вызов usereditordialog
 
     // fake
     void fillDemoClients();
@@ -53,6 +54,17 @@ private slots:
     void fillDemoNSIMaterials();
     void fillDemoDashboard();
     //
+
+    void on_lw_admin_roles_itemSelectionChanged(); // выбор роли
+
+    void on_pb_admin_role_edit_clicked(); // редактирование роли
+
+    void on_pb_admin_role_delete_clicked(); // удаление роли
+
+    void on_lw_admin_users_itemSelectionChanged(); // выбор пользователя
+
+    void on_pb_admin_user_edit_clicked(); // редактирование пользователя
+
 private:
     Ui::MainWidget *ui;
     int m_userId;

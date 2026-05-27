@@ -12,11 +12,13 @@ class RoleEditorDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit RoleEditorDialog(const int& m_roleId, QWidget *parent = nullptr);
+    explicit RoleEditorDialog(int roleId, QWidget *parent = nullptr);
     ~RoleEditorDialog();
 
 private slots:
     void loadPermissions();
+
+    void on_pb_ok_clicked();
 
 private:
     Ui::RoleEditorDialog *ui;
