@@ -7,6 +7,8 @@
 #include <QSqlError>
 #include "roleeditordialog.h"
 #include "usereditordialog.h"
+#include "simpledicteditordialog.h"
+#include "materialeditordialog.h"
 
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
@@ -29,6 +31,9 @@ MainWidget::MainWidget(int userId, QWidget *parent)
         openUserEditor(-1);
     });
     connect(ui->le_nsi_search, &QLineEdit::textChanged, this, &MainWidget::filterNSITable);
+    connect(ui->pb_nsi_add, &QPushButton::clicked, this, [this]() {
+        openNsiEditor(-1);
+    });
 
     ui->lw_main->setCurrentRow(0);
     loadUserInfo();
@@ -97,6 +102,10 @@ void MainWidget::sw_main_change(int index)
         ui->pb_admin_user_create->setEnabled(true);
         ui->pb_admin_user_edit->setEnabled(false);
         ui->pb_admin_user_delete->setEnabled(false);
+
+        ui->pb_nsi_add->setEnabled(true);
+        ui->pb_nsi_edit->setEnabled(false);
+        ui->pb_nsi_delete->setEnabled(false);
 
         loadAdminUsers();
         loadAdminRoles();
@@ -1241,10 +1250,7 @@ void MainWidget::fillNSITypes()
     QList<TypeDemo> types = {
         {"Категории материалов", style()->standardIcon(QStyle::SP_DirIcon), "sys_categories"},
         {"Материалы", style()->standardIcon(QStyle::SP_FileIcon), "sys_materials"},
-        {"Поставщики", style()->standardIcon(QStyle::SP_DirHomeIcon), "sys_suppliers"},
-        {"Единицы измерения", style()->standardIcon(QStyle::SP_FileDialogContentsView), "sys_units"},
-        {"Виды строительных работ", style()->standardIcon(QStyle::SP_DialogApplyButton), "sys_work_types"},
-        {"Техника и оборудование", style()->standardIcon(QStyle::SP_ComputerIcon), "sys_equipment"}
+        {"Единицы измерения", style()->standardIcon(QStyle::SP_FileDialogContentsView), "sys_units"}
     };
 
     for (const auto &t : types) {
@@ -1256,8 +1262,6 @@ void MainWidget::fillNSITypes()
     }
 
     ui->lw_nsi_types->blockSignals(false);
-
-    ui->lw_nsi_types->setCurrentRow(1);
 }
 
 void MainWidget::fillDemoDashboard()
@@ -1474,7 +1478,6 @@ void MainWidget::on_lw_admin_users_itemSelectionChanged()
     ui->pb_admin_user_delete->setEnabled(hasSelection);
 }
 
-
 void MainWidget::on_lw_nsi_types_itemSelectionChanged()
 {
     QListWidgetItem *selectedItem = ui->lw_nsi_types->currentItem();
@@ -1483,32 +1486,35 @@ void MainWidget::on_lw_nsi_types_itemSelectionChanged()
     QString sysKey = selectedItem->data(Qt::UserRole).toString();
 
     if (sysKey == "sys_categories") {
-        qDebug() << "Загрузка таблицы категорий...";
-        ui->splitter_8->setSizes({1, 1});
-        loadCategoriesTable();
+        loadNsiTable("categories", "Название категории");
 
     } else if (sysKey == "sys_materials") {
-        qDebug() << "Загрузка таблицы материалов...";
-
+        loadNsiTable("materials", "Название материала");
 
     } else if (sysKey == "sys_suppliers") {
-        qDebug() << "Загрузка таблицы поставщиков...";
-
+        loadNsiTable("suppliers", "Наименование поставщика");
 
     } else if (sysKey == "sys_units") {
-        qDebug() << "Загрузка таблицы единиц измерения...";
-
+        loadNsiTable("units", "Единица измерения");
 
     } else {
         qDebug() << "Раздел находится в разработке:" << sysKey;
+
+        ui->splitter_8->setSizes({1, 0});
+        return;
     }
+
+    ui->splitter_8->setSizes({1, 1});
 }
 
-void MainWidget::loadCategoriesTable()
+void MainWidget::loadNsiTable(const QString &tableName, const QString &headerLabel)
 {
+    ui->tw_nsi->blockSignals(true);
+
     ui->tw_nsi->clear();
     ui->tw_nsi->setColumnCount(1);
-    ui->tw_nsi->setHorizontalHeaderLabels(QStringList() << "Название категории");
+
+    ui->tw_nsi->setHorizontalHeaderLabels(QStringList() << headerLabel);
 
     ui->tw_nsi->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     ui->tw_nsi->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -1524,28 +1530,29 @@ void MainWidget::loadCategoriesTable()
     }
 
     QSqlQuery query(db);
-    query.prepare("SELECT id, name FROM categories ORDER BY name ASC");
+    QString sql = QString("SELECT id, name FROM %1 ORDER BY name ASC").arg(tableName);
+    query.prepare(sql);
 
     if (!query.exec()) {
-        qCritical() << "Ошибка при загрузке категорий:" << query.lastError().text();
+        qCritical() << "Ошибка при загрузке справочника" << tableName << ":" << query.lastError().text();
         return;
     }
 
     int row = 0;
     while (query.next()) {
-        int categoryId = query.value(0).toInt();
-        QString categoryName = query.value(1).toString();
+        int itemId = query.value(0).toInt();
+        QString itemName = query.value(1).toString();
 
         ui->tw_nsi->insertRow(row);
 
-        QTableWidgetItem *nameItem = new QTableWidgetItem(categoryName);
-
-        nameItem->setData(Qt::UserRole, categoryId);
+        QTableWidgetItem *nameItem = new QTableWidgetItem(itemName);
+        nameItem->setData(Qt::UserRole, itemId);
 
         ui->tw_nsi->setItem(row, 0, nameItem);
-
         row++;
     }
+
+    ui->tw_nsi->blockSignals(false);
 }
 
 void MainWidget::filterNSITable(const QString &searchText)
@@ -1561,3 +1568,204 @@ void MainWidget::filterNSITable(const QString &searchText)
         }
     }
 }
+
+void MainWidget::openNsiEditor(int itemId)
+{
+    QListWidgetItem *selectedDict = ui->lw_nsi_types->currentItem();
+    if (!selectedDict) {
+        QMessageBox::warning(this, "Внимание", "Пожалуйста, выберите справочник слева.");
+        return;
+    }
+
+    QString sysKey = selectedDict->data(Qt::UserRole).toString();
+
+    if (sysKey == "sys_categories") {
+
+        QString title = (itemId == -1) ? "Создание категории" : "Редактирование категории";
+        SimpleDictEditorDialog dialog("categories", title, itemId, this);
+
+        if (dialog.exec() == QDialog::Accepted) {
+            loadNsiTable("categories", "Название категории");
+
+            if (itemId == -1) {
+                QMessageBox::information(this, "Успех", "Новая категория успешно создана!");
+            } else {
+                QMessageBox::information(this, "Успех", "Категория успешно обновлена!");
+            }
+        }
+
+    } else if (sysKey == "sys_units") {
+
+        QString title = (itemId == -1) ? "Создание единицы измерения" : "Редактирование единицы измерения";
+        SimpleDictEditorDialog dialog("units", title, itemId, this);
+
+        if (dialog.exec() == QDialog::Accepted) {
+            loadNsiTable("units", "Единица измерения");
+
+            if (itemId == -1) {
+                QMessageBox::information(this, "Успех", "Новая единица измерения успешно создана!");
+            } else {
+                QMessageBox::information(this, "Успех", "Единица измерения успешно обновлена!");
+            }
+        }
+
+    } else if (sysKey == "sys_materials") {
+
+        MaterialEditorDialog dialog(itemId, this);
+
+        if (dialog.exec() == QDialog::Accepted) {
+
+            loadNsiTable("materials", "Название материала");
+
+            if (itemId == -1) {
+                QMessageBox::information(this, "Успех", "Новый материал успешно создан!");
+            } else {
+                QMessageBox::information(this, "Успех", "Данные материала успешно обновлены!");
+            }
+        }
+    }
+}
+
+void MainWidget::on_pb_nsi_edit_clicked()
+{
+    QTableWidgetItem *selectedRecord = ui->tw_nsi->item(ui->tw_nsi->currentRow(), 0);
+
+    if (selectedRecord) {
+        int itemId = selectedRecord->data(Qt::UserRole).toInt();
+        openNsiEditor(itemId);
+    }
+}
+
+void MainWidget::on_tw_nsi_itemSelectionChanged()
+{
+    bool hasSelection = (ui->tw_nsi->currentItem() != nullptr);
+
+    ui->pb_nsi_edit->setEnabled(hasSelection);
+    ui->pb_nsi_delete->setEnabled(hasSelection);
+}
+
+void MainWidget::on_pb_nsi_delete_clicked()
+{
+    QListWidgetItem *selectedDict = ui->lw_nsi_types->currentItem();
+    if (!selectedDict) return;
+
+    QString sysKey = selectedDict->data(Qt::UserRole).toString();
+
+    QTableWidgetItem *selectedRecord = ui->tw_nsi->item(ui->tw_nsi->currentRow(), 0);
+    if (!selectedRecord) return;
+
+    int itemId = selectedRecord->data(Qt::UserRole).toInt();
+    QString itemName = selectedRecord->text();
+
+    QString tableName;
+    QString tableHeader;
+
+    if (sysKey == "sys_categories") {
+        tableName = "categories";
+        tableHeader = "Название категории";
+    } else if (sysKey == "sys_units") {
+        tableName = "units";
+        tableHeader = "Единица измерения";
+    } else if (sysKey == "sys_materials") {
+        tableName = "materials";
+        tableHeader = "Название материала";
+    } else {
+        QMessageBox::information(this, "Информация", "Удаление для данного раздела еще не реализовано.");
+        return;
+    }
+
+    auto reply = QMessageBox::question(this, "Подтверждение",
+                                       QString("Вы действительно хотите удалить запись «%1»?").arg(itemName),
+                                       QMessageBox::Yes | QMessageBox::No);
+    if (reply == QMessageBox::No) return;
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+
+    QString sql = QString("DELETE FROM %1 WHERE id = :id").arg(tableName);
+    query.prepare(sql);
+    query.bindValue(":id", itemId);
+
+    if (query.exec()) {
+        QMessageBox::information(this, "Успех", "Запись успешно удалена.");
+        loadNsiTable(tableName, tableHeader);
+
+    } else {
+        QString errorMsg = query.lastError().text();
+
+        if (errorMsg.contains("constraint", Qt::CaseInsensitive)) {
+            QMessageBox::warning(this, "Удаление запрещено",
+                                 "Невозможно удалить эту запись, так как она уже используется в других разделах системы.\n\n"
+                                 "Сначала удалите или измените связанные данные.");
+        } else {
+            QMessageBox::critical(this, "Ошибка БД", "Не удалось удалить запись:\n" + errorMsg);
+        }
+    }
+}
+
+void MainWidget::on_pb_admin_user_delete_clicked()
+{
+    QListWidgetItem *selectedItem = ui->lw_admin_users->currentItem();
+    if (!selectedItem) {
+        QMessageBox::warning(this, "Внимание", "Выберите пользователя для удаления.");
+        return;
+    }
+
+    int targetUserId = selectedItem->data(Qt::UserRole).toInt();
+    QString userName = selectedItem->text();
+
+    if (targetUserId == m_userId) {
+        QMessageBox::critical(this, "Ошибка", "Вы не можете удалить собственную учетную запись, находясь в системе!");
+        return;
+    }
+
+    if (targetUserId == 1) {
+        QMessageBox::critical(this, "Ошибка", "Базового администратора системы удалить нельзя!");
+        return;
+    }
+
+    auto reply = QMessageBox::question(this, "Подтверждение",
+                                       QString("Вы действительно хотите безвозвратно удалить пользователя «%1»?").arg(userName),
+                                       QMessageBox::Yes | QMessageBox::No);
+    if (reply == QMessageBox::No) return;
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.transaction()) {
+        QMessageBox::critical(this, "Ошибка", "Не удалось начать транзакцию базы данных.");
+        return;
+    }
+
+    QSqlQuery query(db);
+
+    query.prepare("DELETE FROM auth WHERE id = :id");
+    query.bindValue(":id", targetUserId);
+    if (!query.exec()) {
+        db.rollback();
+        QMessageBox::critical(this, "Ошибка", "Не удалось удалить данные авторизации:\n" + query.lastError().text());
+        return;
+    }
+
+    query.prepare("DELETE FROM users WHERE id = :id");
+    query.bindValue(":id", targetUserId);
+    if (!query.exec()) {
+        db.rollback();
+
+        if (query.lastError().text().contains("constraint", Qt::CaseInsensitive)) {
+            QMessageBox::warning(this, "Удаление запрещено",
+                                 "Невозможно удалить этого пользователя, так как он уже участвует в процессах системы (например, является автором проектов).\n\n"
+                                 "Рекомендуется не удалять, а заблокировать пользователя (снять все права).");
+        } else {
+            QMessageBox::critical(this, "Ошибка БД", "Не удалось удалить пользователя:\n" + query.lastError().text());
+        }
+        return;
+    }
+
+    if (db.commit()) {
+        QMessageBox::information(this, "Успех", "Пользователь успешно удален.");
+        loadAdminUsers();
+    } else {
+        db.rollback();
+        QMessageBox::critical(this, "Ошибка", "Не удалось зафиксировать изменения в базе данных.");
+    }
+}
+

@@ -30,8 +30,9 @@ private slots:
     void openRoleEditor(int roleId = -1); // вызов roleeditordialog
     void openUserEditor(int targetUserId = -1); // вызов usereditordialog
     void fillNSITypes(); // отрисовка таблицы справочников
-    void loadCategoriesTable(); // загрузка таблицы категорий
-    void filterNSITable(const QString &searchText); // поиск по категориям
+    void loadNsiTable(const QString &tableName, const QString &headerLabel); // загрузка детальной таблицы
+    void filterNSITable(const QString &searchText); // поиск по данным
+    void openNsiEditor(int itemId = -1);
 
     // fake
     void fillDemoClients();
@@ -67,6 +68,14 @@ private slots:
     void on_pb_admin_user_edit_clicked(); // редактирование пользователя
 
     void on_lw_nsi_types_itemSelectionChanged(); // выбор справочника
+
+    void on_pb_nsi_edit_clicked(); // редактирование айтема
+
+    void on_tw_nsi_itemSelectionChanged(); // выбор айтема справочника
+
+    void on_pb_nsi_delete_clicked();
+
+    void on_pb_admin_user_delete_clicked();
 
 private:
     Ui::MainWidget *ui;

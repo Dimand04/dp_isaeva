@@ -12,19 +12,25 @@ SOURCES += \
     authwidget.cpp \
     main.cpp \
     mainwidget.cpp \
+    materialeditordialog.cpp \
     roleeditordialog.cpp \
+    simpledicteditordialog.cpp \
     usereditordialog.cpp
 
 HEADERS += \
     authwidget.h \
     mainwidget.h \
+    materialeditordialog.h \
     roleeditordialog.h \
+    simpledicteditordialog.h \
     usereditordialog.h
 
 FORMS += \
     authwidget.ui \
     mainwidget.ui \
+    materialeditordialog.ui \
     roleeditordialog.ui \
+    simpledicteditordialog.ui \
     usereditordialog.ui
 
 # Default rules for deployment.
