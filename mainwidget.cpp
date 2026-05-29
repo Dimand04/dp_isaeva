@@ -9,6 +9,7 @@
 #include "usereditordialog.h"
 #include "simpledicteditordialog.h"
 #include "materialeditordialog.h"
+#include <QDate>
 
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
@@ -34,19 +35,35 @@ MainWidget::MainWidget(int userId, QWidget *parent)
     connect(ui->pb_nsi_add, &QPushButton::clicked, this, [this]() {
         openNsiEditor(-1);
     });
+    connect(ui->le_clients_search, &QLineEdit::textChanged, this, &MainWidget::filterClientsTable);
+    connect(ui->le_projects_search, &QLineEdit::textChanged, this, &MainWidget::applyProjectFilters);
+    connect(ui->lb_proj_client_ref, &QLabel::linkActivated, this, [this](const QString &linkData){
+        int clientId = linkData.toInt();
+
+        ui->lw_main->setCurrentRow(1);
+        sw_main_change(1);
+
+        for (int row = 0; row < ui->tw_clients->rowCount(); ++row) {
+            QTableWidgetItem *item = ui->tw_clients->item(row, 0);
+
+            if (item && item->data(Qt::UserRole).toInt() == clientId) {
+                ui->tw_clients->setCurrentItem(item);
+
+                ui->tw_clients->scrollToItem(item);
+
+                break;
+            }
+        }
+    });
 
     ui->lw_main->setCurrentRow(0);
     loadUserInfo();
 
     //
-    fillDemoClients();
-    fillDemoClientDetails();
     fillDemoClientProjects();
     fillDemoClientFinance();
     fillDemoClientFiles();
     setupProjectFilters();
-    fillDemoProjectsTable();
-    fillDemoProjectDetail();
     fillDemoProjectEstimate();
     fillDemoProjectFiles();
     setupCatalogFilters();
@@ -78,10 +95,17 @@ void MainWidget::sw_main_change(int index)
 
     case 1:
         qDebug() << "Клиенты";
+
+        loadClientsTable();
+        ui->splitter_2->setSizes({1, 0});
+
         break;
 
     case 2:
         qDebug() << "Проекты";
+
+        loadProjectsTable();
+
         break;
 
     case 3:
@@ -164,67 +188,6 @@ void MainWidget::loadUserInfo()
     } else {
         qCritical() << "Ошибка загрузки информации о пользователе:" << query.lastError().text();
     }
-}
-
-void MainWidget::fillDemoClients()
-{
-    ui->tw_clients->setColumnCount(2);
-    ui->tw_clients->setHorizontalHeaderLabels({"ФИО / Организация", "Номер телефона"});
-
-    // Настраиваем колонки: ФИО растягивается, телефон по размеру текста
-    ui->tw_clients->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->tw_clients->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-
-    // Очищаем старое (если было)
-    ui->tw_clients->setRowCount(0);
-
-    // 2. Список тестовых данных
-    struct DemoData { QString fio; QString phone; };
-    QList<DemoData> demoList = {
-        {"Иванов Иван Иванович", "+7 (900) 123-45-67"},
-        {"Петров Петр Петрович", "+7 (911) 222-33-44"},
-        {"Сидорова Мария Александровна", "+7 (950) 888-11-22"},
-        {"ООО 'ГлавСтройИнвест'", "+7 (495) 777-00-00"},
-        {"Васильев Сергей Викторович", "+7 (905) 111-22-33"},
-        {"Смирнова Анна Сергеевна", "+7 (960) 444-55-66"},
-        {"ЗАО 'ТехноПарк'", "+7 (812) 333-22-11"},
-        {"Кузнецов Дмитрий Олегович", "+7 (999) 000-01-02"}
-    };
-
-    // 3. Заполнение таблицы
-    for (int i = 0; i < demoList.size(); ++i) {
-        ui->tw_clients->insertRow(i);
-
-        // Создаем ячейку ФИО
-        QTableWidgetItem *itemFio = new QTableWidgetItem(demoList[i].fio);
-        // Добавляем иконку (опционально, если есть в ресурсах, выглядит круто)
-        // itemFio->setIcon(QIcon(":/res/user_icon.png"));
-
-        // Создаем ячейку Телефона
-        QTableWidgetItem *itemPhone = new QTableWidgetItem(demoList[i].phone);
-
-        // Выравнивание для красоты
-        itemPhone->setTextAlignment(Qt::AlignCenter);
-
-        // Устанавливаем в таблицу
-        ui->tw_clients->setItem(i, 0, itemFio);
-        ui->tw_clients->setItem(i, 1, itemPhone);
-    }
-
-    // Разрешаем выделение только строк
-    ui->tw_clients->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tw_clients->setSelectionMode(QAbstractItemView::SingleSelection);
-    ui->tw_clients->setEditTriggers(QAbstractItemView::NoEditTriggers); // Запрещаем правку
-}
-
-void MainWidget::fillDemoClientDetails()
-{
-    ui->lb_clients_clientName->setText("Иванов Иван Иванович");
-    ui->le_clients_clientPhone->setText("+7 (900) 123-45-67");
-    ui->le_clients_clientEmail->setText("ivanovivan@gmail.com");
-    ui->le_clients_clientAddress->setText("Город, улица, дом");
-    ui->le_clients_clientPasport->setText("1234 123456");
-    ui->pte_clients_clientNotes->setPlainText("Пример описания");
 }
 
 void MainWidget::fillDemoClientProjects()
@@ -424,156 +387,63 @@ void MainWidget::fillDemoClientFiles()
 
 void MainWidget::setupProjectFilters()
 {
+    ui->cb_project_status_filter->blockSignals(true);
+
     ui->cb_project_status_filter->clear();
-    ui->cb_project_status_filter->addItem("📊 Все статусы");
-    ui->cb_project_status_filter->addItem("✏️ Проектирование");
-    ui->cb_project_status_filter->addItem("🏗️ Строительство");
-    ui->cb_project_status_filter->addItem("✅ Завершено");
-    ui->cb_project_status_filter->addItem("❄️ Заморожено");
+
+    ui->cb_project_status_filter->addItem("📊 Все статусы", "Все");
+    ui->cb_project_status_filter->addItem("✏️ Проектирование", "Проектирование");
+    ui->cb_project_status_filter->addItem("🏗️ Строительство", "Строительство");
+    ui->cb_project_status_filter->addItem("✅ Завершено", "Завершено");
+    ui->cb_project_status_filter->addItem("❄️ Заморожено", "Заморожено");
+
+    ui->cb_project_status_filter->blockSignals(false);
+
+    connect(ui->cb_project_status_filter, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWidget::applyProjectFilters);
 }
 
-void MainWidget::fillDemoProjectsTable()
+void MainWidget::applyProjectFilters()
 {
-    // 1. Настройка колонок
-    ui->tw_projects_list->setColumnCount(6);
-    ui->tw_projects_list->setHorizontalHeaderLabels({
-        "Название проекта", "Заказчик", "Статус", "Начало", "План. завершение", "Бюджет"
-    });
+    QString searchText = ui->le_projects_search->text();
 
-    // Растягиваем название проекта и имя заказчика
-    ui->tw_projects_list->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->tw_projects_list->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    ui->tw_projects_list->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    ui->tw_projects_list->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+    QString targetStatus = ui->cb_project_status_filter->currentData().toString();
 
-    ui->tw_projects_list->setRowCount(0);
+    for (int row = 0; row < ui->tw_projects_list->rowCount(); ++row) {
 
-    // 2. Тестовые данные
-    struct ProjectEntry {
-        QString name;
-        QString client;
-        QString status;
-        QString startDate;
-        QString endDate;
-        QString budget;
-        QColor statusColor;
-    };
+        bool matchStatus = true;
 
-    QList<ProjectEntry> demoProjects = {
-        {"Коттедж 'Скандинавия'", "Иванов И.И.", "Строительство", "10.01.2026", "15.11.2026", "8 450 000 ₽", QColor(0, 120, 215)},
-        {"Гостевой дом с баней", "Петров П.П.", "Завершено", "15.11.2025", "01.03.2026", "2 100 000 ₽", QColor(56, 142, 60)},
-        {"Гараж на 2 авто", "ООО 'ГлавСтрой'", "Проектирование", "20.03.2026", "10.05.2026", "950 000 ₽", QColor(255, 140, 0)},
-        {"Торговый павильон", "ЗАО 'ТехноПарк'", "Заморожено", "01.12.2025", "30.06.2026", "4 500 000 ₽", QColor(120, 120, 120)},
-        {"Реконструкция мансарды", "Смирнова А.С.", "Строительство", "05.03.2026", "20.04.2026", "1 200 000 ₽", QColor(0, 120, 215)}
-    };
+        if (targetStatus != "Все") {
+            QTableWidgetItem *statusItem = ui->tw_projects_list->item(row, 2);
 
-    // 3. Заполнение таблицы
-    for (int i = 0; i < demoProjects.size(); ++i) {
-        ui->tw_projects_list->insertRow(i);
+            if (statusItem && statusItem->text() != targetStatus) {
+                matchStatus = false;
+            }
+        }
 
-        // Название проекта
-        ui->tw_projects_list->setItem(i, 0, new QTableWidgetItem(demoProjects[i].name));
+        bool matchText = true;
 
-        // Заказчик
-        ui->tw_projects_list->setItem(i, 1, new QTableWidgetItem(demoProjects[i].client));
+        if (matchStatus && !searchText.isEmpty()) {
+            matchText = false;
 
-        // Статус (цветной текст)
-        QTableWidgetItem *statusItem = new QTableWidgetItem(demoProjects[i].status);
-        statusItem->setForeground(demoProjects[i].statusColor);
-        statusItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
-        statusItem->setTextAlignment(Qt::AlignCenter);
-        ui->tw_projects_list->setItem(i, 2, statusItem);
+            for (int col = 0; col < ui->tw_projects_list->columnCount(); ++col) {
+                QTableWidgetItem *item = ui->tw_projects_list->item(row, col);
+                if (item && item->text().contains(searchText, Qt::CaseInsensitive)) {
+                    matchText = true;
+                    break;
+                }
+            }
 
-        // Даты
-        ui->tw_projects_list->setItem(i, 3, new QTableWidgetItem(demoProjects[i].startDate));
-        ui->tw_projects_list->setItem(i, 4, new QTableWidgetItem(demoProjects[i].endDate));
+            if (!matchText) {
+                QTableWidgetItem *nameItem = ui->tw_projects_list->item(row, 0);
+                if (nameItem && nameItem->data(Qt::UserRole + 1).toString().contains(searchText, Qt::CaseInsensitive)) {
+                    matchText = true;
+                }
+            }
+        }
 
-        // Бюджет
-        QTableWidgetItem *budgetWeight = new QTableWidgetItem(demoProjects[i].budget);
-        budgetWeight->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        ui->tw_projects_list->setItem(i, 5, budgetWeight);
+        ui->tw_projects_list->setRowHidden(row, !(matchStatus && matchText));
     }
-
-    // Общие настройки таблицы
-    ui->tw_projects_list->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tw_projects_list->setAlternatingRowColors(true);
-    ui->tw_projects_list->verticalHeader()->setVisible(false);
-    ui->tw_projects_list->setEditTriggers(QAbstractItemView::NoEditTriggers);
-}
-
-void MainWidget::fillDemoProjectDetail()
-{
-    // 1. Заполнение основных меток и полей
-    ui->lb_proj_name->setText("Гараж на 2 автомобиля (Индивидуальный проект)");
-    ui->lb_proj_client_ref->setText("Заказчик: ООО 'ГлавСтрой'");
-    ui->lb_proj_client_ref->setStyleSheet("color: blue; text-decoration: underline; font-weight: bold;");
-
-    // Статус (используем QLineEdit как информационное поле)
-    ui->le_proj_status->setText("Проектирование");
-    ui->le_proj_status->setReadOnly(true);
-    ui->le_proj_status->setStyleSheet("background-color: #FFF3E0; color: #E65100; font-weight: bold; padding: 5px;");
-
-    // 2. Описание проекта (QPlainTextEdit)
-    QString description =
-        "Тип объекта: Капитальное строение\n"
-        "Стиль: Хай-тек\n"
-        "Площадь: 48 м² (6х8 м)\n"
-        "Материал стен: Газобетонные блоки\n"
-        "Кровля: Плоская с системой внутреннего водостока\n"
-        "Особенности: Установка двух автоматических ворот, наличие смотровой ямы, "
-        "зона для хранения инструментов.";
-    ui->pte_project_description->setPlainText(description);
-    ui->pte_project_description->setReadOnly(true);
-
-    // 3. Настройка таблицы этапов (tw_project_stages)
-    ui->tw_project_stages->setColumnCount(5);
-    ui->tw_project_stages->setHorizontalHeaderLabels({
-        "Этап работ", "План. дата", "Факт. дата", "Ответственный", "Статус"
-    });
-
-    ui->tw_project_stages->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->tw_project_stages->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-    ui->tw_project_stages->setRowCount(0);
-
-    // Тестовые этапы для гаража
-    struct StageDemo {
-        QString name;
-        QString planDate;
-        QString factDate;
-        QString leader;
-        QString status;
-        QColor statusColor;
-    };
-
-    QList<StageDemo> stages = {
-        {"Замеры и геодезия участка", "20.03.2026", "21.03.2026", "Котов А.В.", "✅ Готово", QColor(56, 142, 60)},
-        {"Архитектурный план (АР)", "25.03.2026", "28.03.2026", "Смирнова А.С.", "✅ Готово", QColor(56, 142, 60)},
-        {"Расчет фундамента и нагрузок", "02.04.2026", "-", "Петров П.П.", "🏗️ В работе", QColor(25, 118, 210)},
-        {"Подбор материалов и смета", "10.04.2026", "-", "Администратор", "⏳ Ожидание", QColor(120, 120, 120)},
-        {"Заливка плиты основания", "20.04.2026", "-", "Бригада №3", "⏳ Ожидание", QColor(120, 120, 120)}
-    };
-
-    // 4. Заполнение таблицы
-    for (int i = 0; i < stages.size(); ++i) {
-        ui->tw_project_stages->insertRow(i);
-
-        ui->tw_project_stages->setItem(i, 0, new QTableWidgetItem(stages[i].name));
-        ui->tw_project_stages->setItem(i, 1, new QTableWidgetItem(stages[i].planDate));
-        ui->tw_project_stages->setItem(i, 2, new QTableWidgetItem(stages[i].factDate));
-        ui->tw_project_stages->setItem(i, 3, new QTableWidgetItem(stages[i].leader));
-
-        QTableWidgetItem *statusItem = new QTableWidgetItem(stages[i].status);
-        statusItem->setForeground(stages[i].statusColor);
-        statusItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
-        ui->tw_project_stages->setItem(i, 4, statusItem);
-    }
-
-    // Дополнительные визуальные настройки
-    ui->tw_project_stages->setAlternatingRowColors(true);
-    ui->tw_project_stages->verticalHeader()->setVisible(false);
-    ui->tw_project_stages->setSelectionBehavior(QAbstractItemView::SelectRows);
-
-    ui->pb_stage_progress->setValue(40); // 2 этапа из 5 готовы
 }
 
 void MainWidget::fillDemoProjectEstimate()
@@ -1626,6 +1496,88 @@ void MainWidget::openNsiEditor(int itemId)
     }
 }
 
+void MainWidget::loadClientsTable()
+{
+    ui->tw_clients->blockSignals(true);
+
+    ui->tw_clients->clear();
+    ui->tw_clients->setColumnCount(2);
+    ui->tw_clients->setHorizontalHeaderLabels(QStringList() << "ФИО / Организация" << "Номер телефона");
+
+    ui->tw_clients->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_clients->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    ui->tw_clients->verticalHeader()->setVisible(false);
+
+    ui->tw_clients->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_clients->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tw_clients->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    ui->tw_clients->setRowCount(0);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        qWarning() << "База данных не открыта!";
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT id, name, phone, type FROM clients ORDER BY name ASC");
+
+    if (!query.exec()) {
+        qCritical() << "Ошибка при загрузке клиентов:" << query.lastError().text();
+        return;
+    }
+
+    int row = 0;
+    while (query.next()) {
+        int clientId = query.value(0).toInt();
+        QString name = query.value(1).toString();
+        QString phone = query.value(2).toString();
+        QString type = query.value(3).toString();
+
+        ui->tw_clients->insertRow(row);
+
+        QTableWidgetItem *itemName = new QTableWidgetItem(name);
+
+        itemName->setData(Qt::UserRole, clientId);
+
+        itemName->setData(Qt::UserRole + 1, type);
+
+        if (phone.trimmed().isEmpty()) {
+            phone = "—";
+        }
+        QTableWidgetItem *itemPhone = new QTableWidgetItem(phone);
+        itemPhone->setTextAlignment(Qt::AlignCenter);
+
+        ui->tw_clients->setItem(row, 0, itemName);
+        ui->tw_clients->setItem(row, 1, itemPhone);
+
+        row++;
+    }
+
+    ui->tw_clients->blockSignals(false);
+}
+
+void MainWidget::filterClientsTable(const QString &searchText)
+{
+    for (int row = 0; row < ui->tw_clients->rowCount(); ++row) {
+
+        bool match = false;
+
+        QTableWidgetItem *nameItem = ui->tw_clients->item(row, 0);
+        QTableWidgetItem *phoneItem = ui->tw_clients->item(row, 1);
+
+        if (nameItem && nameItem->text().contains(searchText, Qt::CaseInsensitive)) {
+            match = true;
+        }
+        else if (phoneItem && phoneItem->text().contains(searchText, Qt::CaseInsensitive)) {
+            match = true;
+        }
+
+        ui->tw_clients->setRowHidden(row, !match);
+    }
+}
+
 void MainWidget::on_pb_nsi_edit_clicked()
 {
     QTableWidgetItem *selectedRecord = ui->tw_nsi->item(ui->tw_nsi->currentRow(), 0);
@@ -1769,3 +1721,278 @@ void MainWidget::on_pb_admin_user_delete_clicked()
     }
 }
 
+void MainWidget::on_tw_clients_itemSelectionChanged()
+{
+    QTableWidgetItem *selectedItem = ui->tw_clients->item(ui->tw_clients->currentRow(), 0);
+    bool hasSelection = (selectedItem != nullptr);
+
+    if (!hasSelection) {
+        ui->splitter_2->setSizes({1, 0});
+
+        clearClientDetailsUI();
+        return;
+    }
+
+    int clientId = selectedItem->data(Qt::UserRole).toInt();
+    loadClientDetails(clientId);
+
+    ui->splitter_2->setSizes({1, 1});
+}
+
+void MainWidget::clearClientDetailsUI()
+{
+    ui->lb_clients_clientName->clear();
+
+    ui->le_clients_clientPhone->clear();
+    ui->le_clients_clientEmail->clear();
+    ui->le_clients_clientAddress->clear();
+    ui->le_clients_clientPasport->clear();
+
+    ui->pte_clients_clientNotes->clear();
+}
+
+void MainWidget::loadClientDetails(int clientId)
+{
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        qWarning() << "База данных не открыта!";
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT name, phone, email, address, passport, notes "
+                  "FROM clients WHERE id = :id");
+    query.bindValue(":id", clientId);
+
+    if (query.exec() && query.next()) {
+
+        ui->lb_clients_clientName->setText(query.value("name").toString());
+        ui->le_clients_clientPhone->setText(query.value("phone").toString());
+        ui->le_clients_clientEmail->setText(query.value("email").toString());
+
+        ui->le_clients_clientAddress->setText(query.value("address").toString());
+        ui->le_clients_clientPasport->setText(query.value("passport").toString());
+
+        ui->pte_clients_clientNotes->setPlainText(query.value("notes").toString());
+
+    } else {
+        qWarning() << "Ошибка при загрузке деталей клиента:" << query.lastError().text();
+
+        clearClientDetailsUI();
+    }
+}
+
+void MainWidget::loadProjectsTable()
+{
+    ui->tw_projects_list->blockSignals(true);
+
+    ui->tw_projects_list->setColumnCount(6);
+    ui->tw_projects_list->setHorizontalHeaderLabels({
+        "Название проекта", "Заказчик", "Статус", "Начало", "План. завершение", "Бюджет"
+    });
+
+    ui->tw_projects_list->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_projects_list->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    ui->tw_projects_list->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    ui->tw_projects_list->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents);
+
+    ui->tw_projects_list->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_projects_list->verticalHeader()->setVisible(false);
+    ui->tw_projects_list->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    ui->tw_projects_list->setRowCount(0);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        qWarning() << "База данных не открыта!";
+        return;
+    }
+
+    QSqlQuery query(db);
+    QString sql = R"(
+        SELECT
+            p.id,
+            p.name,
+            c.name AS client_name,
+            p.status,
+            p.start_date,
+            p.end_date,
+            p.total_cost
+        FROM projects p
+        LEFT JOIN clients c ON p.client_id = c.id
+        ORDER BY p.start_date DESC
+    )";
+
+    if (!query.exec(sql)) {
+        qCritical() << "Ошибка при загрузке проектов:" << query.lastError().text();
+        return;
+    }
+
+    QLocale russianLocale(QLocale::Russian, QLocale::Russia);
+
+    int row = 0;
+    while (query.next()) {
+        ui->tw_projects_list->insertRow(row);
+
+        int projectId = query.value("id").toInt();
+        QString projectName = query.value("name").toString();
+        QString clientName = query.value("client_name").toString();
+        if (clientName.isEmpty()) clientName = "—";
+
+        QString statusDb = query.value("status").toString();
+        QDate startDate = query.value("start_date").toDate();
+        QDate endDate = query.value("end_date").toDate();
+        double budget = query.value("total_cost").toDouble();
+
+        QTableWidgetItem *itemName = new QTableWidgetItem(projectName);
+        itemName->setData(Qt::UserRole, projectId);
+        ui->tw_projects_list->setItem(row, 0, itemName);
+
+        ui->tw_projects_list->setItem(row, 1, new QTableWidgetItem(clientName));
+
+        QString statusText;
+        QColor statusColor;
+
+        if (statusDb == "design") {
+            statusText = "Проектирование";
+            statusColor = QColor(255, 140, 0);
+        } else if (statusDb == "building") {
+            statusText = "Строительство";
+            statusColor = QColor(0, 120, 215);
+        } else if (statusDb == "finished") {
+            statusText = "Завершено";
+            statusColor = QColor(56, 142, 60);
+        } else if (statusDb == "frozen") {
+            statusText = "Заморожено";
+            statusColor = QColor(120, 120, 120);
+        } else {
+            statusText = "Неизвестно";
+            statusColor = QColor(0, 0, 0);
+        }
+
+        QTableWidgetItem *itemStatus = new QTableWidgetItem(statusText);
+        itemStatus->setForeground(statusColor);
+        itemStatus->setFont(QFont("Segoe UI", -1, QFont::Bold));
+        itemStatus->setTextAlignment(Qt::AlignCenter);
+        ui->tw_projects_list->setItem(row, 2, itemStatus);
+
+        QString startStr = startDate.isValid() ? startDate.toString("dd.MM.yyyy") : "—";
+        QString endStr = endDate.isValid() ? endDate.toString("dd.MM.yyyy") : "—";
+
+        ui->tw_projects_list->setItem(row, 3, new QTableWidgetItem(startStr));
+        ui->tw_projects_list->setItem(row, 4, new QTableWidgetItem(endStr));
+
+        QString budgetStr = russianLocale.toString(budget, 'f', 2) + " ₽";
+        QTableWidgetItem *itemBudget = new QTableWidgetItem(budgetStr);
+        itemBudget->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        ui->tw_projects_list->setItem(row, 5, itemBudget);
+
+        row++;
+    }
+
+    ui->tw_projects_list->blockSignals(false);
+}
+
+void MainWidget::on_tw_projects_list_itemSelectionChanged()
+{
+    QTableWidgetItem *selectedItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    bool hasSelection = (selectedItem != nullptr);
+
+    if (!hasSelection) {
+        ui->splitter_5->setSizes({1, 0});
+
+        clearProjectDetailsUI();
+        return;
+    }
+
+    int projectId = selectedItem->data(Qt::UserRole).toInt();
+
+    loadProjectDetails(projectId);
+
+    ui->splitter_5->setSizes({1, 1});
+}
+
+void MainWidget::clearProjectDetailsUI()
+{
+    ui->lb_proj_name->clear();
+
+    ui->lb_proj_client_ref->clear();
+
+    ui->le_proj_status->clear();
+
+    ui->pb_stage_progress->setValue(0);
+
+    ui->pte_project_description->clear();
+}
+
+void MainWidget::loadProjectDetails(int projectId)
+{
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        qWarning() << "База данных не открыта!";
+        return;
+    }
+
+    QSqlQuery query(db);
+    QString sql = R"(
+        SELECT
+            p.name,
+            p.client_id,
+            c.name AS client_name,
+            p.status,
+            p.address
+        FROM projects p
+        LEFT JOIN clients c ON p.client_id = c.id
+        WHERE p.id = :id
+    )";
+
+    query.prepare(sql);
+    query.bindValue(":id", projectId);
+
+    if (query.exec() && query.next()) {
+
+        QString projectName = query.value("name").toString();
+        int clientId = query.value("client_id").toInt();
+        QString clientName = query.value("client_name").toString();
+        QString statusDb = query.value("status").toString();
+        QString address = query.value("address").toString();
+
+        if (clientName.isEmpty()) clientName = "Не указан";
+
+        ui->lb_proj_name->setText(projectName);
+
+        ui->lb_proj_client_ref->setText(QString("<a href=\"%1\" style=\"color: #0078D7; text-decoration: none;\">%2</a>")
+                                            .arg(clientId)
+                                            .arg(clientName));
+
+        ui->lb_proj_client_ref->setTextFormat(Qt::RichText);
+
+        QString statusText;
+        int progressValue = 0;
+
+        if (statusDb == "design") {
+            statusText = "Проектирование";
+            progressValue = 25;
+        } else if (statusDb == "building") {
+            statusText = "Строительство";
+            progressValue = 70;
+        } else if (statusDb == "finished") {
+            statusText = "Завершено";
+            progressValue = 100;
+        } else if (statusDb == "frozen") {
+            statusText = "Заморожено";
+            progressValue = 0;
+        } else {
+            statusText = "Неизвестно";
+        }
+
+        ui->le_proj_status->setText(statusText);
+        ui->pb_stage_progress->setValue(progressValue);
+
+        ui->pte_project_description->setPlainText(QString("Адрес объекта:\n%1").arg(address));
+
+    } else {
+        qWarning() << "Ошибка при загрузке деталей проекта:" << query.lastError().text();
+        clearProjectDetailsUI();
+    }
+}

@@ -10,6 +10,7 @@ CONFIG += c++17
 
 SOURCES += \
     authwidget.cpp \
+    clienteditordialog.cpp \
     main.cpp \
     mainwidget.cpp \
     materialeditordialog.cpp \
@@ -19,6 +20,7 @@ SOURCES += \
 
 HEADERS += \
     authwidget.h \
+    clienteditordialog.h \
     mainwidget.h \
     materialeditordialog.h \
     roleeditordialog.h \
@@ -27,6 +29,7 @@ HEADERS += \
 
 FORMS += \
     authwidget.ui \
+    clienteditordialog.ui \
     mainwidget.ui \
     materialeditordialog.ui \
     roleeditordialog.ui \

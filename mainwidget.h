@@ -32,17 +32,21 @@ private slots:
     void fillNSITypes(); // отрисовка таблицы справочников
     void loadNsiTable(const QString &tableName, const QString &headerLabel); // загрузка детальной таблицы
     void filterNSITable(const QString &searchText); // поиск по данным
-    void openNsiEditor(int itemId = -1);
+    void openNsiEditor(int itemId = -1); // вызов виджета редактирования справочников
+    void loadClientsTable(); // формирование таблицы клиентов
+    void filterClientsTable(const QString &searchText); // поиск по клиентам
+    void clearClientDetailsUI(); // Очистка всех полей и вкладок
+    void loadClientDetails(int clientId); // загрузка данных клиента
+    void loadProjectsTable(); // формирование таблицы проектов
+    void setupProjectFilters(); // настройка фильтров проектов
+    void applyProjectFilters(); // фильтрация списка проектов
+    void clearProjectDetailsUI();
+    void loadProjectDetails(int projectId);
 
     // fake
-    void fillDemoClients();
-    void fillDemoClientDetails();
     void fillDemoClientProjects();
     void fillDemoClientFinance();
     void fillDemoClientFiles();
-    void setupProjectFilters();
-    void fillDemoProjectsTable();
-    void fillDemoProjectDetail();
     void fillDemoProjectEstimate();
     void fillDemoProjectFiles();
     void setupCatalogFilters();
@@ -73,9 +77,13 @@ private slots:
 
     void on_tw_nsi_itemSelectionChanged(); // выбор айтема справочника
 
-    void on_pb_nsi_delete_clicked();
+    void on_pb_nsi_delete_clicked(); // удаление записи справочника
 
-    void on_pb_admin_user_delete_clicked();
+    void on_pb_admin_user_delete_clicked(); // удаление пользователя
+
+    void on_tw_clients_itemSelectionChanged();
+
+    void on_tw_projects_list_itemSelectionChanged();
 
 private:
     Ui::MainWidget *ui;

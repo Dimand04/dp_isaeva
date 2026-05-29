@@ -132,7 +132,7 @@
      </widget>
      <widget class="QStackedWidget" name="sw_main">
       <property name="currentIndex">
-       <number>5</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="page_main">
        <layout class="QGridLayout" name="gridLayout_25">
@@ -321,7 +321,7 @@
              </widget>
             </item>
             <item row="0" column="0">
-             <widget class="QLineEdit" name="lineEdit">
+             <widget class="QLineEdit" name="le_clients_search">
               <property name="placeholderText">
                <string>Поиск по ФИО или номеру телефона</string>
               </property>
@@ -329,6 +329,12 @@
             </item>
             <item row="1" column="0" colspan="2">
              <widget class="QTableWidget" name="tw_clients">
+              <property name="minimumSize">
+               <size>
+                <width>200</width>
+                <height>0</height>
+               </size>
+              </property>
               <property name="editTriggers">
                <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
               </property>
@@ -687,7 +693,7 @@
              <number>3</number>
             </property>
             <item row="0" column="0">
-             <widget class="QLineEdit" name="lineEdit_10">
+             <widget class="QLineEdit" name="le_projects_search">
               <property name="placeholderText">
                <string>Поиск по названию, адресу, ФИО</string>
               </property>
@@ -712,7 +718,7 @@
                <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
               </property>
               <property name="selectionBehavior">
-               <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+               <enum>QAbstractItemView::SelectionBehavior::SelectItems</enum>
               </property>
               <attribute name="verticalHeaderVisible">
                <bool>false</bool>
