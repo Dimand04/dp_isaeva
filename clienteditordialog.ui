@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>341</height>
+    <height>407</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,12 +21,15 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="2" colspan="2">
-    <widget class="QRadioButton" name="rb_legal">
+   <item row="0" column="0">
+    <widget class="QRadioButton" name="rb_individual">
      <property name="text">
-      <string>Юридическое лицо</string>
+      <string>Физическое лицо</string>
      </property>
     </widget>
+   </item>
+   <item row="4" column="0" colspan="4">
+    <widget class="QLineEdit" name="le_passport"/>
    </item>
    <item row="2" column="0" colspan="4">
     <widget class="QLineEdit" name="le_phone">
@@ -45,6 +48,23 @@
      </property>
     </widget>
    </item>
+   <item row="1" column="0" colspan="4">
+    <widget class="QLineEdit" name="le_name"/>
+   </item>
+   <item row="5" column="0" colspan="4">
+    <widget class="QPlainTextEdit" name="pte_address">
+     <property name="placeholderText">
+      <string>Адрес</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="2" colspan="2">
+    <widget class="QPushButton" name="pb_save">
+     <property name="text">
+      <string>PushButton</string>
+     </property>
+    </widget>
+   </item>
    <item row="7" column="0" colspan="2">
     <spacer name="horizontalSpacer">
      <property name="orientation">
@@ -58,33 +78,6 @@
      </property>
     </spacer>
    </item>
-   <item row="0" column="0">
-    <widget class="QRadioButton" name="rb_individual">
-     <property name="text">
-      <string>Физическое лицо</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0" colspan="4">
-    <widget class="QLineEdit" name="le_name"/>
-   </item>
-   <item row="7" column="2" colspan="2">
-    <widget class="QPushButton" name="pb_save">
-     <property name="text">
-      <string>PushButton</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0" colspan="4">
-    <widget class="QLineEdit" name="le_passport"/>
-   </item>
-   <item row="5" column="0" colspan="4">
-    <widget class="QPlainTextEdit" name="pte_address">
-     <property name="placeholderText">
-      <string>Адрес</string>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="1">
     <spacer name="horizontalSpacer_2">
      <property name="orientation">
@@ -97,6 +90,13 @@
       </size>
      </property>
     </spacer>
+   </item>
+   <item row="0" column="2" colspan="2">
+    <widget class="QRadioButton" name="rb_legal">
+     <property name="text">
+      <string>Юридическое лицо</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

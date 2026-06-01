@@ -144,4 +144,3 @@ void MaterialEditorDialog::on_pb_save_clicked()
         QMessageBox::critical(this, "Ошибка БД", "Не удалось сохранить материал:\n" + query.lastError().text());
     }
 }
-

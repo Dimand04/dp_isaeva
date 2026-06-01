@@ -14,6 +14,8 @@ SOURCES += \
     main.cpp \
     mainwidget.cpp \
     materialeditordialog.cpp \
+    paymentdialog.cpp \
+    projecteditordialog.cpp \
     roleeditordialog.cpp \
     simpledicteditordialog.cpp \
     usereditordialog.cpp
@@ -23,6 +25,8 @@ HEADERS += \
     clienteditordialog.h \
     mainwidget.h \
     materialeditordialog.h \
+    paymentdialog.h \
+    projecteditordialog.h \
     roleeditordialog.h \
     simpledicteditordialog.h \
     usereditordialog.h
@@ -32,6 +36,8 @@ FORMS += \
     clienteditordialog.ui \
     mainwidget.ui \
     materialeditordialog.ui \
+    paymentdialog.ui \
+    projecteditordialog.ui \
     roleeditordialog.ui \
     simpledicteditordialog.ui \
     usereditordialog.ui

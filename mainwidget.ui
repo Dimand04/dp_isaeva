@@ -314,16 +314,12 @@
              <number>3</number>
             </property>
             <item row="0" column="1">
-             <widget class="QToolButton" name="toolButton">
+             <widget class="QToolButton" name="pb_client_create">
               <property name="text">
-               <string>+</string>
+               <string/>
               </property>
-             </widget>
-            </item>
-            <item row="0" column="0">
-             <widget class="QLineEdit" name="le_clients_search">
-              <property name="placeholderText">
-               <string>Поиск по ФИО или номеру телефона</string>
+              <property name="icon">
+               <iconset theme="QIcon::ThemeIcon::ContactNew"/>
               </property>
              </widget>
             </item>
@@ -344,6 +340,13 @@
               <attribute name="verticalHeaderVisible">
                <bool>false</bool>
               </attribute>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLineEdit" name="le_clients_search">
+              <property name="placeholderText">
+               <string>Поиск по ФИО или номеру телефона</string>
+              </property>
              </widget>
             </item>
            </layout>
@@ -400,18 +403,11 @@
                 <property name="bottomMargin">
                  <number>3</number>
                 </property>
-                <item row="0" column="0">
-                 <widget class="QLabel" name="label_2">
-                  <property name="text">
-                   <string>Телефон:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="0" column="1">
+                <item row="1" column="1">
                  <widget class="QLineEdit" name="le_clients_clientPhone">
                   <property name="minimumSize">
                    <size>
-                    <width>300</width>
+                    <width>0</width>
                     <height>0</height>
                    </size>
                   </property>
@@ -420,61 +416,104 @@
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0">
-                 <widget class="QLabel" name="label_3">
-                  <property name="text">
-                   <string>Email:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QLineEdit" name="le_clients_clientEmail">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="2" column="0">
+                <item row="3" column="0">
                  <widget class="QLabel" name="label_4">
                   <property name="text">
                    <string>Адрес:</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="1">
-                 <widget class="QLineEdit" name="le_clients_clientAddress">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="0">
-                 <widget class="QLabel" name="label_5">
-                  <property name="text">
-                   <string>Паспортные данные или ИНН/ОГРН:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="3" column="1">
-                 <widget class="QLineEdit" name="le_clients_clientPasport">
-                  <property name="readOnly">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item row="4" column="0">
+                <item row="5" column="0">
                  <widget class="QLabel" name="label_6">
                   <property name="text">
                    <string>Заметки:</string>
                   </property>
                  </widget>
                 </item>
-                <item row="5" column="0" colspan="2">
+                <item row="4" column="0">
+                 <widget class="QLabel" name="label_5">
+                  <property name="text">
+                   <string>Паспортные данные или ИНН/ОГРН:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLineEdit" name="le_clients_clientPasport">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLineEdit" name="le_clients_clientAddress">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLineEdit" name="le_clients_clientEmail">
+                  <property name="readOnly">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0" colspan="2">
                  <widget class="QPlainTextEdit" name="pte_clients_clientNotes">
                   <property name="readOnly">
                    <bool>true</bool>
                   </property>
                  </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="label_3">
+                  <property name="text">
+                   <string>Email:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_2">
+                  <property name="text">
+                   <string>Телефон:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout">
+                  <item>
+                   <spacer name="horizontalSpacer_7">
+                    <property name="orientation">
+                     <enum>Qt::Orientation::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item>
+                   <widget class="QToolButton" name="pb_client_edit">
+                    <property name="text">
+                     <string/>
+                    </property>
+                    <property name="icon">
+                     <iconset theme="QIcon::ThemeIcon::MailMessageNew"/>
+                    </property>
+                    <property name="popupMode">
+                     <enum>QToolButton::ToolButtonPopupMode::DelayedPopup</enum>
+                    </property>
+                    <property name="toolButtonStyle">
+                     <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>
+                    </property>
+                    <property name="arrowType">
+                     <enum>Qt::ArrowType::NoArrow</enum>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                </layout>
               </widget>
@@ -554,13 +593,6 @@
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0">
-                 <widget class="QLabel" name="label_7">
-                  <property name="text">
-                   <string>Всего:</string>
-                  </property>
-                 </widget>
-                </item>
                 <item row="3" column="0">
                  <widget class="QLabel" name="label_8">
                   <property name="text">
@@ -571,14 +603,45 @@
                 <item row="3" column="1">
                  <widget class="QLineEdit" name="lb_paid_sum"/>
                 </item>
-                <item row="5" column="0" colspan="2">
-                 <widget class="QTableWidget" name="tw_payments"/>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_7">
+                  <property name="text">
+                   <string>Всего:</string>
+                  </property>
+                 </widget>
                 </item>
                 <item row="4" column="1">
                  <widget class="QLineEdit" name="lb_debt_sum"/>
                 </item>
+                <item row="5" column="0" colspan="2">
+                 <widget class="QTableWidget" name="tw_payments"/>
+                </item>
                 <item row="1" column="1">
                  <widget class="QLineEdit" name="lb_total_contract_sum"/>
+                </item>
+                <item row="0" column="0" colspan="2">
+                 <layout class="QHBoxLayout" name="horizontalLayout_2">
+                  <item>
+                   <spacer name="horizontalSpacer_8">
+                    <property name="orientation">
+                     <enum>Qt::Orientation::Horizontal</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>40</width>
+                      <height>20</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="pb_add_payment">
+                    <property name="text">
+                     <string>Внести оплату</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
                 </item>
                </layout>
               </widget>
@@ -640,13 +703,6 @@
               </widget>
              </widget>
             </item>
-            <item row="0" column="1">
-             <widget class="QToolButton" name="toolButton_2">
-              <property name="text">
-               <string>...</string>
-              </property>
-             </widget>
-            </item>
            </layout>
           </widget>
          </widget>
@@ -703,7 +759,7 @@
              <widget class="QComboBox" name="cb_project_status_filter"/>
             </item>
             <item row="0" column="2">
-             <widget class="QPushButton" name="pushButton_6">
+             <widget class="QPushButton" name="pb_project_create">
               <property name="text">
                <string>Создать новый</string>
               </property>

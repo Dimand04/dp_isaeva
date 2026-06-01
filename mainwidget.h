@@ -2,7 +2,8 @@
 #define MAINWIDGET_H
 
 #include <QWidget>
-
+#include <QCloseEvent>
+#include <QTableWidgetItem>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -17,6 +18,9 @@ class MainWidget : public QWidget
 public:
     MainWidget(int m_userId, QWidget *parent = nullptr);
     ~MainWidget();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
     void sw_main_change(int index);
@@ -42,10 +46,10 @@ private slots:
     void applyProjectFilters(); // фильтрация списка проектов
     void clearProjectDetailsUI();
     void loadProjectDetails(int projectId);
+    void loadClientProjects(int clientId);
+    void loadClientFinance(int clientId);
 
     // fake
-    void fillDemoClientProjects();
-    void fillDemoClientFinance();
     void fillDemoClientFiles();
     void fillDemoProjectEstimate();
     void fillDemoProjectFiles();
@@ -84,6 +88,16 @@ private slots:
     void on_tw_clients_itemSelectionChanged();
 
     void on_tw_projects_list_itemSelectionChanged();
+
+    void on_pb_client_edit_clicked();
+
+    void on_pb_client_create_clicked();
+
+    void on_tw_client_projects_itemDoubleClicked(QTableWidgetItem *item);
+
+    void on_pb_add_payment_clicked();
+
+    void on_pb_project_create_clicked();
 
 private:
     Ui::MainWidget *ui;
