@@ -15,6 +15,9 @@ public:
     explicit ProjectEditorDialog(int projectId = -1, QWidget *parent = nullptr);
     ~ProjectEditorDialog();
 
+public slots:
+    void setClient(int clientId);
+
 private slots:
     void on_pb_save_clicked();
 

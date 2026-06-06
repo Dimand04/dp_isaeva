@@ -48,22 +48,14 @@ private slots:
     void loadProjectDetails(int projectId);
     void loadClientProjects(int clientId);
     void loadClientFinance(int clientId);
+    void loadProjectStages(int projectId);
+    void loadProjectEstimates(int projectId);
+    void loadProjectFiles(int projectId);
+    void loadClientFiles(int clientId);
+    void loadHomeDashboard();
 
-    // fake
-    void fillDemoClientFiles();
-    void fillDemoProjectEstimate();
-    void fillDemoProjectFiles();
-    void setupCatalogFilters();
-    void fillDemoCatalog();
+    // Спорно
     void updateCatalogLayout();
-    void fillDemoCatalogSpecs();
-    void fillDemoCatalogEstimate();
-    void setupExportFilters();
-    void fillExportPreviewDemo();
-    void fillExportFileSelection(int projectIndex);
-    void fillDemoAdminPermissions();
-    void fillDemoDashboard();
-    //
 
     void on_lw_admin_roles_itemSelectionChanged(); // выбор роли
 
@@ -98,6 +90,50 @@ private slots:
     void on_pb_add_payment_clicked();
 
     void on_pb_project_create_clicked();
+
+    void on_pb_project_edit_clicked();
+
+    void on_pb_stage_add_clicked();
+
+    void on_pb_stage_edit_clicked();
+
+    void on_pb_stage_delete_clicked();
+
+    void on_tw_project_estimates_itemSelectionChanged();
+
+    void on_pb_estimate_add_clicked();
+
+    void on_pb_estimate_edit_clicked();
+
+    void on_pb_estimate_delete_clicked();
+
+    void on_pb_client_project_add_clicked();
+
+    void on_pb_project_file_add_clicked();
+
+    void on_tw_project_files_itemDoubleClicked(QTableWidgetItem *item);
+
+    void on_pb_project_file_delete_clicked();
+
+    void on_pb_project_open_folder_clicked();
+
+    void on_pb_client_file_add_clicked();
+
+    void on_pb_client_file_delete_clicked();
+
+    void on_tw_client_files_itemDoubleClicked(QTableWidgetItem *item);
+
+    void on_pb_client_open_folder_clicked();
+
+    void on_lb_stat_projects_clicked();
+
+    void on_lb_stat_clients_clicked();
+
+    void on_tw_home_deadlines_itemDoubleClicked(QTableWidgetItem *item);
+
+    void on_lb_new_client_card_clicked();
+
+    void on_lb_new_project_card_clicked();
 
 private:
     Ui::MainWidget *ui;

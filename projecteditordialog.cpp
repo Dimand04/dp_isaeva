@@ -148,3 +148,11 @@ void ProjectEditorDialog::on_pb_save_clicked()
     }
 }
 
+void ProjectEditorDialog::setClient(int clientId)
+{
+    int index = ui->cb_clients->findData(clientId);
+    if (index >= 0) {
+        ui->cb_clients->setCurrentIndex(index);
+    }
+}
+

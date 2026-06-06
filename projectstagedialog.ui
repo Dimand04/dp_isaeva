@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ProjectEditorDialog</class>
- <widget class="QDialog" name="ProjectEditorDialog">
+ <class>ProjectStageDialog</class>
+ <widget class="QDialog" name="ProjectStageDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
-    <height>356</height>
+    <width>400</width>
+    <height>233</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,90 +17,80 @@
    <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Клиент</string>
+      <string>Название этапа</string>
      </property>
     </widget>
    </item>
    <item row="0" column="1">
-    <widget class="QComboBox" name="cb_clients"/>
+    <widget class="QLineEdit" name="le_stage_name">
+     <property name="placeholderText">
+      <string/>
+     </property>
+    </widget>
    </item>
    <item row="1" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>название проекта</string>
+      <string>Дата начала</string>
      </property>
     </widget>
    </item>
    <item row="1" column="1">
-    <widget class="QLineEdit" name="le_name">
-     <property name="placeholderText">
-      <string/>
+    <widget class="QDateEdit" name="de_start_plan">
+     <property name="calendarPopup">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
    <item row="2" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
-      <string>Адрес</string>
+      <string>Дата окончания</string>
      </property>
     </widget>
    </item>
    <item row="2" column="1">
-    <widget class="QPlainTextEdit" name="pte_address"/>
+    <widget class="QDateEdit" name="de_end_plan">
+     <property name="calendarPopup">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
    <item row="3" column="0">
+    <widget class="QCheckBox" name="chb_start_fact">
+     <property name="text">
+      <string>Фактическое начало</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QDateEdit" name="de_start_fact">
+     <property name="calendarPopup">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
     <widget class="QLabel" name="label_4">
      <property name="text">
       <string>Статус</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="1">
-    <widget class="QComboBox" name="cb_statuses"/>
-   </item>
-   <item row="4" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>Начало работ</string>
-     </property>
-    </widget>
-   </item>
    <item row="4" column="1">
-    <widget class="QDateEdit" name="de_start_date">
-     <property name="calendarPopup">
-      <bool>true</bool>
-     </property>
-    </widget>
+    <widget class="QComboBox" name="cb_status"/>
    </item>
    <item row="5" column="0">
-    <widget class="QLabel" name="label_6">
+    <widget class="QLabel" name="label_5">
      <property name="text">
-      <string>Окончание работ</string>
+      <string>Ответственный</string>
      </property>
     </widget>
    </item>
    <item row="5" column="1">
-    <widget class="QDateEdit" name="de_end_date">
-     <property name="calendarPopup">
-      <bool>true</bool>
-     </property>
-    </widget>
+    <widget class="QComboBox" name="cb_responsible"/>
    </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_7">
-     <property name="text">
-      <string>Бюджет проекта</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="1">
-    <widget class="QDoubleSpinBox" name="dsb_total_cost">
-     <property name="maximum">
-      <double>10000000000000000000000.000000000000000</double>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="0" colspan="2">
+   <item row="7" column="0" colspan="2">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <spacer name="horizontalSpacer">

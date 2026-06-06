@@ -13,6 +13,11 @@
 #include "clienteditordialog.h"
 #include "paymentdialog.h"
 #include "projecteditordialog.h"
+#include "projectstagedialog.h"
+#include "projectestimatedialog.h"
+#include <QFileDialog>
+#include "filestoragemanager.h"
+#include <QDesktopServices>
 
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
@@ -62,20 +67,7 @@ MainWidget::MainWidget(int userId, QWidget *parent)
     ui->lw_main->setCurrentRow(0);
     loadUserInfo();
 
-    //
-    fillDemoClientFiles();
     setupProjectFilters();
-    fillDemoProjectEstimate();
-    fillDemoProjectFiles();
-    setupCatalogFilters();
-    fillDemoCatalog();
-    fillDemoCatalogSpecs();
-    fillDemoCatalogEstimate();
-    setupExportFilters();
-    fillExportPreviewDemo();
-    fillDemoAdminPermissions();
-    fillDemoDashboard();
-    //
 }
 
 MainWidget::~MainWidget()
@@ -106,6 +98,9 @@ void MainWidget::sw_main_change(int index)
     switch (index) {
     case 0:
         qDebug() << "Главная";
+
+        loadHomeDashboard();
+
         break;
 
     case 1:
@@ -120,6 +115,7 @@ void MainWidget::sw_main_change(int index)
         qDebug() << "Проекты";
 
         loadProjectsTable();
+        ui->splitter_5->setSizes({1, 0});
 
         break;
 
@@ -205,58 +201,6 @@ void MainWidget::loadUserInfo()
     }
 }
 
-void MainWidget::fillDemoClientFiles()
-{
-    // 1. Базовая настройка ListWidget
-    ui->lw_client_files->clear();
-    ui->lw_client_files->setIconSize(QSize(32, 32)); // Делаем иконки крупными и заметными
-    ui->lw_client_files->setSpacing(5);             // Добавляем отступы между элементами
-
-    // 2. Тестовые данные (Имя файла, тип/расширение, дата добавления)
-    struct FileDemo {
-        QString name;
-        QString type; // pdf, docx, xlsx, dwg, jpg
-        QString date;
-    };
-
-    QList<FileDemo> files = {
-        {"Договор_подряда_№45-А.pdf", "pdf", "10.02.2026"},
-        {"Техническое_задание_v2.docx", "docx", "12.02.2026"},
-        {"Смета_материалов_фундамент.xlsx", "xlsx", "15.02.2026"},
-        {"План_участка_кадастр.pdf", "pdf", "10.02.2026"},
-        {"Чертеж_фасада_основной.dwg", "dwg", "01.03.2026"},
-        {"Фото_площадки_до_начала_работ.jpg", "jpg", "05.03.2026"},
-        {"Акт_приемки_скрытых_работ.pdf", "pdf", "20.03.2026"}
-    };
-
-    // 3. Заполнение списка
-    for (const auto &file : files) {
-        // Создаем текст: Имя файла + дата в скобках
-        QString displayText = QString("%1\n(%2)").arg(file.name, file.date);
-        QListWidgetItem *item = new QListWidgetItem(displayText, ui->lw_client_files);
-
-        // 4. Установка иконки в зависимости от типа файла
-        // В реальном проекте здесь будут пути к твоим .png иконкам в ресурсах (:/res/pdf.png)
-        // Для демо используем стандартные системные иконки Qt, чтобы код сразу заработал
-        QIcon fileIcon;
-        if (file.type == "pdf")
-            fileIcon = style()->standardIcon(QStyle::SP_FileIcon); // Замени на иконку PDF
-        else if (file.type == "xlsx" || file.type == "docx")
-            fileIcon = style()->standardIcon(QStyle::SP_FileIcon); // Замени на иконку Office
-        else if (file.type == "jpg")
-            fileIcon = style()->standardIcon(QStyle::SP_FileDialogContentsView); // Замени на иконку Image
-        else
-            fileIcon = style()->standardIcon(QStyle::SP_FileIcon); // Общая иконка
-
-        item->setIcon(fileIcon);
-
-        // Добавляем подсказку при наведении
-        item->setToolTip("Нажмите дважды, чтобы открыть файл");
-
-        ui->lw_client_files->addItem(item);
-    }
-}
-
 void MainWidget::setupProjectFilters()
 {
     ui->cb_project_status_filter->blockSignals(true);
@@ -318,259 +262,6 @@ void MainWidget::applyProjectFilters()
     }
 }
 
-void MainWidget::fillDemoProjectEstimate()
-{
-    // 1. Настройка таблицы сметы (tw_project_estimate)
-    ui->tw_project_estimate->setColumnCount(6);
-    ui->tw_project_estimate->setHorizontalHeaderLabels({
-        "Наименование / Группа", "Ед. изм.", "Кол-во", "Цена за ед.", "Сумма", "Статус"
-    });
-
-    // Настройка размеров колонок
-    ui->tw_project_estimate->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch); // Название тянется
-    ui->tw_project_estimate->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-    ui->tw_project_estimate->setRowCount(0);
-
-    // 2. Структура для демо-данных
-    struct EstimateItem {
-        QString name;
-        QString unit;
-        double qty;
-        double price;
-        QString status;
-        QColor statusColor;
-        bool isHeader; // Флаг для выделения заголовков категорий
-    };
-
-    QList<EstimateItem> items = {
-        {"МАТЕРИАЛЫ", "", 0, 0, "", Qt::black, true},
-        {"Бетон М300 (фундамент)", "м³", 12.5, 6200, "Оплачено", QColor(56, 142, 60), false},
-        {"Газобетонный блок 600х300", "м³", 32.0, 5800, "Оплачено", QColor(56, 142, 60), false},
-        {"Арматура 12мм", "тн", 0.85, 72000, "Ожидание", QColor(25, 118, 210), false},
-        {"Кровельный профнастил", "м²", 55.0, 850, "Черновик", QColor(120, 120, 120), false},
-
-        {"РАБОТЫ", "", 0, 0, "", Qt::black, true},
-        {"Земляные работы и разметка", "услуга", 1, 15000, "Оплачено", QColor(56, 142, 60), false},
-        {"Заливка фундаментной плиты", "услуга", 1, 85000, "В работе", QColor(255, 140, 0), false},
-        {"Кладка стен", "м²", 96.0, 1200, "Черновик", QColor(120, 120, 120), false},
-
-        {"ДОСТАВКА И ТЕХНИКА", "", 0, 0, "", Qt::black, true},
-        {"Аренда бетононасоса", "смена", 1, 25000, "Оплачено", QColor(56, 142, 60), false},
-        {"Доставка блоков (Манипулятор)", "рейс", 2, 8000, "Ожидание", QColor(25, 118, 210), false}
-    };
-
-    double grandTotal = 0;
-
-    // 3. Заполнение таблицы
-    for (int i = 0; i < items.size(); ++i) {
-        ui->tw_project_estimate->insertRow(i);
-
-        if (items[i].isHeader) {
-            // Оформление строки-заголовка (МАТЕРИАЛЫ, РАБОТЫ...)
-            QTableWidgetItem *headerItem = new QTableWidgetItem(items[i].name);
-            headerItem->setBackground(QColor(240, 240, 240));
-            headerItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
-            ui->tw_project_estimate->setItem(i, 0, headerItem);
-
-            // Объединяем ячейки в строке заголовка для красоты
-            ui->tw_project_estimate->setSpan(i, 0, 1, 6);
-            continue;
-        }
-
-        double rowSum = items[i].qty * items[i].price;
-        grandTotal += rowSum;
-
-        // Наименование
-        ui->tw_project_estimate->setItem(i, 0, new QTableWidgetItem(items[i].name));
-
-        // Ед. изм.
-        QTableWidgetItem *unitItem = new QTableWidgetItem(items[i].unit);
-        unitItem->setTextAlignment(Qt::AlignCenter);
-        ui->tw_project_estimate->setItem(i, 1, unitItem);
-
-        // Кол-во
-        QTableWidgetItem *qtyItem = new QTableWidgetItem(QString::number(items[i].qty, 'f', 1));
-        qtyItem->setTextAlignment(Qt::AlignCenter);
-        ui->tw_project_estimate->setItem(i, 2, qtyItem);
-
-        // Цена
-        QTableWidgetItem *priceItem = new QTableWidgetItem(QString::number(items[i].price, 'f', 0) + " ₽");
-        priceItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        ui->tw_project_estimate->setItem(i, 3, priceItem);
-
-        // Сумма строки
-        QTableWidgetItem *sumItem = new QTableWidgetItem(QString::number(rowSum, 'f', 0) + " ₽");
-        sumItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        sumItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
-        ui->tw_project_estimate->setItem(i, 4, sumItem);
-
-        // Статус
-        QTableWidgetItem *statusItem = new QTableWidgetItem(items[i].status);
-        statusItem->setForeground(items[i].statusColor);
-        statusItem->setTextAlignment(Qt::AlignCenter);
-        ui->tw_project_estimate->setItem(i, 5, statusItem);
-    }
-
-    // 4. Обновление итогового лейбла (lb_total_estimate_sum)
-    // Добавим к сумме налог или маржу 10% для реалистичности "итоговой стоимости объекта"
-    double margin = grandTotal * 0.10;
-    double finalSum = grandTotal + margin;
-
-    ui->lb_total_estimate_sum->setText(QString::number(finalSum, 'f', 0) + " ₽");
-    ui->lb_total_estimate_sum->setStyleSheet("font-size: 18pt; font-weight: bold; color: #1976D2;");
-
-    // Общие настройки
-    ui->tw_project_estimate->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tw_project_estimate->verticalHeader()->setVisible(false);
-}
-
-void MainWidget::fillDemoProjectFiles()
-{
-    // 1. Настройка ListWidget
-    ui->lw_project_docs->clear();
-    ui->lw_project_docs->setIconSize(QSize(40, 40)); // Иконки покрупнее для презентабельности
-    ui->lw_project_docs->setSpacing(4);             // Небольшой отступ между пунктами
-
-    // 2. Структура демо-данных
-    struct FileItem {
-        QString name;
-        QString type; // Расширение
-        QString size;
-        QString date;
-    };
-
-    QList<FileItem> files = {
-        {"АР_Гараж_ХайТек_Финальный.pdf", "pdf", "4.2 МБ", "20.03.2026"},
-        {"План_фундамента_сетка.dwg", "dwg", "12.8 МБ", "22.03.2026"},
-        {"Смета_материалов_полная.xlsx", "xlsx", "156 КБ", "25.03.2026"},
-        {"Договор_подряда_№128_ГлСтрой.pdf", "pdf", "1.1 МБ", "20.03.2026"},
-        {"Фото_привязки_к_местности.jpg", "jpg", "3.5 МБ", "21.03.2026"},
-        {"Визуализация_день_рендер.png", "png", "8.2 МБ", "24.03.2026"},
-        {"Техническое_задание_заказчика.docx", "docx", "45 КБ", "18.03.2026"}
-    };
-
-    // 3. Заполнение списка
-    for (const auto &file : files) {
-        // Формируем текст: Имя файла жирным (сверху) и доп. инфо (снизу)
-        // \n создает вторую строку в элементе списка
-        QString itemText = QString("%1\nРазмер: %2 | Добавлен: %3")
-                               .arg(file.name)
-                               .arg(file.size)
-                               .arg(file.date);
-
-        QListWidgetItem *item = new QListWidgetItem(itemText, ui->lw_project_docs);
-
-        // 4. Установка иконок (используем стандартные или системные)
-        QIcon icon;
-        if (file.type == "pdf") {
-            icon = style()->standardIcon(QStyle::SP_FileIcon); // Замени на иконку PDF красного цвета
-        } else if (file.type == "xlsx" || file.type == "docx") {
-            icon = style()->standardIcon(QStyle::SP_FileIcon); // Замени на иконку Office (синий/зеленый)
-        } else if (file.type == "jpg" || file.type == "png") {
-            icon = style()->standardIcon(QStyle::SP_FileDialogContentsView); // Иконка картинки
-        } else if (file.type == "dwg") {
-            icon = style()->standardIcon(QStyle::SP_FileIcon); // Иконка чертежа
-        } else {
-            icon = style()->standardIcon(QStyle::SP_FileIcon);
-        }
-
-        item->setIcon(icon);
-
-        // Настраиваем шрифт: верхняя строка будет чуть крупнее
-        QFont font = item->font();
-        font.setPointSize(9);
-        item->setFont(font);
-
-        ui->lw_project_docs->addItem(item);
-    }
-
-    // 5. Визуальный стиль через код (или можно в QSS)
-    ui->lw_project_docs->setStyleSheet(
-        "QListWidget::item { border-bottom: 1px solid #f0f0f0; padding: 5px; }"
-        "QListWidget::item:selected { background-color: #e3f2fd; color: #1976d2; border: none; }"
-        );
-}
-
-void MainWidget::setupCatalogFilters()
-{
-    // Категории строений
-    ui->cb_catalog_category->clear();
-    ui->cb_catalog_category->addItems({
-        "🏠 Все типы",
-        "Брусовые дома",
-        "Каменные дома",
-        "Каркасные объекты",
-        "Бани и сауны",
-        "Гаражи и навесы"
-    });
-
-    // Этажность
-    ui->cb_floors->clear();
-    ui->cb_floors->addItems({"Любая этажность", "1 этаж", "2 этажа", "С мансардой"});
-
-    // Тип кровли
-    ui->cb_roof_type->clear();
-    ui->cb_roof_type->addItems({"Любая кровля", "Двускатная", "Плоская", "Вальмовая"});
-}
-
-void MainWidget::fillDemoCatalog()
-{
-    // Очистка (полная, с удалением виджетов)
-    if (ui->gridLayout_catalog) {
-        QLayoutItem *item;
-        while ((item = ui->gridLayout_catalog->takeAt(0)) != nullptr) {
-            if (QWidget *w = item->widget()) w->deleteLater();
-            delete item;
-        }
-    }
-
-    struct CatalogItem { QString title; QString area; QString price; QString tags; };
-    QList<CatalogItem> items = {
-        {"Коттедж 'Осло'", "145 м²", "от 6.2 млн ₽", "2 этажа | Брус"},
-        {"Дом 'Прага'", "110 м²", "от 4.8 млн ₽", "1 этаж | Кирпич"},
-        {"Баня 'Уют'", "35 м²", "от 1.2 млн ₽", "1 этаж | Бревно"},
-        {"Гараж 'Бокс-2'", "48 м²", "от 0.9 млн ₽", "Газобетон"},
-        {"Вилла 'Майами'", "280 м²", "от 12.5 млн ₽", "2 этажа | Монолит"},
-        {"Дачный дом 'Лето'", "60 м²", "от 2.1 млн ₽", "Мансарда | Каркас"}
-    };
-
-    // Создаем карточки, но пока не заботимся о row/col
-    for (int i = 0; i < items.size(); ++i) {
-        QFrame *card = new QFrame();
-        card->setFixedSize(220, 280);
-        card->setStyleSheet("QFrame { background-color: white; border: 1px solid #dcdcdc; border-radius: 8px; } "
-                            "QFrame:hover { border: 2px solid #1976d2; background-color: #f5faff; }");
-
-        QVBoxLayout *cardLayout = new QVBoxLayout(card);
-
-        QLabel *imgLabel = new QLabel("НЕТ ФОТО");
-        imgLabel->setFixedSize(200, 140);
-        imgLabel->setAlignment(Qt::AlignCenter);
-        imgLabel->setStyleSheet("background-color: #f0f0f0; border-radius: 4px;");
-
-        QLabel *titleLabel = new QLabel(items[i].title);
-        titleLabel->setStyleSheet("font-weight: bold; font-size: 11pt; border: none;");
-
-        QLabel *tagsLabel = new QLabel(items[i].area + "\n" + items[i].tags);
-        tagsLabel->setStyleSheet("color: #666; font-size: 9pt; border: none;");
-
-        QLabel *priceLabel = new QLabel(items[i].price);
-        priceLabel->setStyleSheet("color: #1976d2; font-weight: bold; border: none;");
-
-        cardLayout->addWidget(imgLabel);
-        cardLayout->addWidget(titleLabel);
-        cardLayout->addWidget(tagsLabel);
-        cardLayout->addStretch();
-        cardLayout->addWidget(priceLabel);
-
-        // Просто добавляем в лейаут, порядок исправит updateCatalogLayout
-        ui->gridLayout_catalog->addWidget(card, 0, i);
-    }
-
-    // Применяем правильную расстановку
-    updateCatalogLayout();
-}
-
 void MainWidget::updateCatalogLayout()
 {
     if (!ui->gridLayout_catalog) return;
@@ -610,194 +301,6 @@ void MainWidget::updateCatalogLayout()
 
     // Пружина снизу
     ui->gridLayout_catalog->setRowStretch(ui->gridLayout_catalog->rowCount(), 1);
-}
-
-void MainWidget::fillDemoCatalogSpecs()
-{
-    // 1. Настройка таблицы
-    ui->tw_catalog_params->setColumnCount(2);
-    ui->tw_catalog_params->setHorizontalHeaderLabels({"Параметр", "Значение"});
-
-    // Настройка размеров: Параметр по тексту, Значение занимает всё остальное место
-    ui->tw_catalog_params->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    ui->tw_catalog_params->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-
-    // Отключаем редактирование и скрываем вертикальный заголовок (номера строк)
-    ui->tw_catalog_params->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->tw_catalog_params->verticalHeader()->setVisible(false);
-    ui->tw_catalog_params->setAlternatingRowColors(true); // Эффект зебры
-
-    ui->tw_catalog_params->setRowCount(0);
-
-    // 2. Тестовые данные для технических характеристик
-    struct SpecEntry {
-        QString key;
-        QString value;
-    };
-
-    QList<SpecEntry> specs = {
-        {"Общая площадь", "145.5 м²"},
-        {"Жилая площадь", "98.0 м²"},
-        {"Габариты дома", "10.4 х 12.6 м"},
-        {"Количество этажей", "2 (включая мансарду)"},
-        {"Тип фундамента", "Монолитная ж/б плита (300 мм)"},
-        {"Материал стен", "Профилированный брус 200х150 мм"},
-        {"Перекрытия", "Деревянные балки с шумоизоляцией"},
-        {"Тип кровли", "Двускатная, металлочерепица GrandLine"},
-        {"Высота потолков", "2.85 м"},
-        {"Площадь остекления", "24.5 м² (двухкамерные пакеты)"},
-        {"Срок возведения", "45 - 60 рабочих дней"}
-    };
-
-    // 3. Заполнение таблицы
-    for (int i = 0; i < specs.size(); ++i) {
-        ui->tw_catalog_params->insertRow(i);
-
-        // Ячейка параметра (левая)
-        QTableWidgetItem *itemKey = new QTableWidgetItem(specs[i].key);
-        itemKey->setForeground(QColor(100, 100, 100)); // Серый цвет для названий
-
-        // Ячейка значения (правая)
-        QTableWidgetItem *itemValue = new QTableWidgetItem(specs[i].value);
-        itemValue->setFont(QFont("Segoe UI", -1, QFont::Bold)); // Жирный для самих данных
-
-        ui->tw_catalog_params->setItem(i, 0, itemKey);
-        ui->tw_catalog_params->setItem(i, 1, itemValue);
-    }
-}
-
-void MainWidget::fillDemoCatalogEstimate()
-{
-    // 1. Настройка таблицы
-    ui->tw_catalog_estimate->setColumnCount(3);
-    ui->tw_catalog_estimate->setHorizontalHeaderLabels({"Наименование материала", "Ед. изм.", "Кол-во"});
-
-    // Настройка размеров: Название тянется, остальное по тексту
-    ui->tw_catalog_estimate->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->tw_catalog_estimate->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    ui->tw_catalog_estimate->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-
-    ui->tw_catalog_estimate->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->tw_catalog_estimate->verticalHeader()->setVisible(false);
-    ui->tw_catalog_estimate->setAlternatingRowColors(true);
-
-    ui->tw_catalog_estimate->setRowCount(0);
-
-    // 2. Тестовые данные (Спецификация материалов для проекта "Осло")
-    struct MaterialItem {
-        QString name;
-        QString unit;
-        QString qty;
-    };
-
-    QList<MaterialItem> items = {
-        {"Бетон марки М300 (фундамент)", "м³", "42.5"},
-        {"Арматура стальная 12 мм", "тн", "1.25"},
-        {"Брус профилированный 150х200", "м³", "68.0"},
-        {"Балки перекрытий (сосна)", "м³", "12.4"},
-        {"Металлочерепица (кровля)", "м²", "195.0"},
-        {"Утеплитель минераловатный", "м²", "140.0"},
-        {"Гидро-пароизоляция", "рул.", "8.0"},
-        {"Окна ПВХ (двухкамерные)", "шт", "12"},
-        {"Дверь входная (сейф-тип)", "шт", "1"},
-        {"Пиломатериал (черновой)", "м³", "4.5"},
-        {"Крепежные элементы (комплект)", "компл", "1"}
-    };
-
-    // 3. Заполнение таблицы
-    for (int i = 0; i < items.size(); ++i) {
-        ui->tw_catalog_estimate->insertRow(i);
-
-        // Наименование
-        ui->tw_catalog_estimate->setItem(i, 0, new QTableWidgetItem(items[i].name));
-
-        // Единица измерения (по центру)
-        QTableWidgetItem *itemUnit = new QTableWidgetItem(items[i].unit);
-        itemUnit->setTextAlignment(Qt::AlignCenter);
-        ui->tw_catalog_estimate->setItem(i, 1, itemUnit);
-
-        // Количество (вправо)
-        QTableWidgetItem *itemQty = new QTableWidgetItem(items[i].qty);
-        itemQty->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        itemQty->setFont(QFont("Segoe UI", -1, QFont::Bold)); // Выделяем количество
-        ui->tw_catalog_estimate->setItem(i, 2, itemQty);
-    }
-}
-
-void MainWidget::setupExportFilters()
-{
-    // 1. Выбор проекта
-    ui->cb_export_project_select->clear();
-    ui->cb_export_project_select->addItem("--- Выберите проект ---", 0);
-    ui->cb_export_project_select->addItem("Коттедж 'Скандинавия'", 1);
-    ui->cb_export_project_select->addItem("Гостевой дом с баней", 2);
-    ui->cb_export_project_select->addItem("Гараж на 2 автомобиля", 3);
-
-    // 2. Настройка комбобокса выбора документа/файла
-    ui->cb_export_file_type->clear();
-    ui->cb_export_file_type->addItem("--- Сначала выберите проект ---");
-    ui->cb_export_file_type->setEnabled(false); // Блокируем до выбора проекта
-
-    // 3. Выбор формата
-    ui->cb_export_format->clear();
-    ui->cb_export_format->addItems({"PDF Document (.pdf)", "Excel (.csv)", "AutoCAD (.dxf)", "3D Model (.obj)"});
-}
-
-void MainWidget::fillExportPreviewDemo()
-{
-    // Настройка таблицы предпросмотра (имитация печатного документа)
-    ui->tw_report_data->setColumnCount(4);
-    ui->tw_report_data->setHorizontalHeaderLabels({"Наименование", "Кол-во", "Цена", "Сумма"});
-    ui->tw_report_data->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-
-    ui->tw_report_data->setRowCount(0);
-
-    // Демо-строки для сметы гаража
-    struct Row { QString name; QString qty; QString prc; QString sum; };
-    QList<Row> rows = {
-        {"Бетон М300", "12.5 м³", "6 200", "77 500"},
-        {"Газоблок 600х300", "32.0 м³", "5 800", "185 600"},
-        {"Арматура 12мм", "0.85 тн", "72 000", "61 200"},
-        {"Кровельный профнастил", "55.0 м²", "850", "46 750"}
-    };
-
-    for (int i = 0; i < rows.size(); ++i) {
-        ui->tw_report_data->insertRow(i);
-        ui->tw_report_data->setItem(i, 0, new QTableWidgetItem(rows[i].name));
-        ui->tw_report_data->setItem(i, 1, new QTableWidgetItem(rows[i].qty));
-        ui->tw_report_data->setItem(i, 2, new QTableWidgetItem(rows[i].prc));
-        ui->tw_report_data->setItem(i, 3, new QTableWidgetItem(rows[i].sum));
-
-        // Выравнивание чисел
-        ui->tw_report_data->item(i, 1)->setTextAlignment(Qt::AlignCenter);
-        ui->tw_report_data->item(i, 3)->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    }
-
-    // Итоговая информация в лейбл внизу предпросмотра
-    ui->lb_total_info->setText("ИТОГО К ОПЛАТЕ: 371 050.00 ₽");
-}
-
-void MainWidget::fillExportFileSelection(int projectIndex)
-{
-    if (projectIndex <= 0) {
-        ui->cb_export_file_type->clear();
-        ui->cb_export_file_type->addItem("--- Сначала выберите проект ---");
-        ui->cb_export_file_type->setEnabled(false);
-        return;
-    }
-
-    ui->cb_export_file_type->setEnabled(true);
-    ui->cb_export_file_type->clear();
-
-    // Добавляем список доступных сущностей для экспорта
-    // Мы можем использовать данные (UserRole) для определения, какую страницу превью показывать
-    ui->cb_export_file_type->addItem("📄 Полная смета материалов", "table");
-    ui->cb_export_file_type->addItem("📄 Календарный план работ", "table");
-    ui->cb_export_file_type->addItem("📐 План этажа (2D)", "graphics");
-    ui->cb_export_file_type->addItem("📐 Схема фундамента (2D)", "graphics");
-    ui->cb_export_file_type->addItem("📐 Фасады (2D)", "graphics");
-    ui->cb_export_file_type->addItem("📦 3D-модель (каркас)", "model");
-    ui->cb_export_file_type->addItem("📦 3D-визуализация (рендер)", "model");
 }
 
 void MainWidget::loadAdminUsers()
@@ -942,40 +445,6 @@ void MainWidget::openUserEditor(int targetUserId)
     }
 }
 
-void MainWidget::fillDemoAdminPermissions()
-{
-    ui->lw_admin_roles->clear();
-
-    // Список прав, соответствующих твоим вкладкам
-    QStringList permissions = {
-        "Доступ к разделу 'Главная'",
-        "Доступ к разделу 'Клиенты'",
-        "Доступ к разделу 'Проекты'",
-        "Доступ к разделу 'Каталог'",
-        "Доступ к разделу 'Экспорт'",
-        "Доступ к разделу 'Администрирование'",
-        "Право на удаление проектов",
-        "Право на редактирование смет",
-        "Доступ к финансовой отчетности"
-    };
-
-    for (const QString &text : permissions) {
-        QListWidgetItem *item = new QListWidgetItem(text, ui->lw_admin_roles);
-
-        // Включаем чекбокс для элемента
-        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-
-        // Для демо: первые 5 пунктов отметим как включенные
-        if (permissions.indexOf(text) < 5) {
-            item->setCheckState(Qt::Checked);
-        } else {
-            item->setCheckState(Qt::Unchecked);
-        }
-
-        ui->lw_admin_roles->addItem(item);
-    }
-}
-
 void MainWidget::fillNSITypes()
 {
     ui->lw_nsi_types->blockSignals(true);
@@ -1006,111 +475,6 @@ void MainWidget::fillNSITypes()
     ui->lw_nsi_types->blockSignals(false);
 }
 
-void MainWidget::fillDemoDashboard()
-{
-    // 1. ЗАПОЛНЕНИЕ КАРТОЧЕК СТАТИСТИКИ
-    // Используем HTML-теги для разного размера шрифта в одном лейбле
-
-    // Карточка: Проекты
-    ui->lb_stat_projects->setText(
-        "<p align='center'><span style='font-size:10pt; color:#666;'>АКТИВНЫЕ ПРОЕКТЫ</span><br>"
-        "<span style='font-size:24pt; font-weight:bold; color:#1976D2;'>8</span><br>"
-        "<span style='font-size:9pt; color:green;'>+2 за этот месяц</span></p>"
-        );
-
-    // Карточка: Клиенты
-    ui->lb_stat_clients->setText(
-        "<p align='center'><span style='font-size:10pt; color:#666;'>ВСЕГО КЛИЕНТОВ</span><br>"
-        "<span style='font-size:24pt; font-weight:bold; color:#388E3C;'>42</span><br>"
-        "<span style='font-size:9pt; color:#666;'>15 активных договоров</span></p>"
-        );
-
-    // Карточка: Финансы
-    ui->lb_stat_finance->setText(
-        "<p align='center'><span style='font-size:10pt; color:#666;'>ОЖИДАЕМЫЕ ПЛАТЕЖИ</span><br>"
-        "<span style='font-size:20pt; font-weight:bold; color:#E65100;'>1.28 млн ₽</span><br>"
-        "<span style='font-size:9pt; color:red;'>3 задолженности</span></p>"
-        );
-
-    // Карточка: Создать клиента
-    ui->lb_new_client_card->setText(
-        "<p align='center'><span style='font-size:10pt; color:#666;'>НОВЫЙ КЛИЕНТ</span><br>"
-        "<span style='font-size:24pt; font-weight:bold; color:#1976D2;'>👤+</span><br>"
-        "<span style='font-size:9pt; color:#1976D2;'>Добавить в базу</span></p>"
-        );
-
-    // Карточка: Создать проект
-    ui->lb_new_project_card->setText(
-        "<p align='center'><span style='font-size:10pt; color:#666;'>НОВЫЙ ПРОЕКТ</span><br>"
-        "<span style='font-size:24pt; font-weight:bold; color:#1976D2;'>🏗️</span><br>"
-        "<span style='font-size:9pt; color:#1976D2;'>Начать планирование</span></p>"
-        );
-
-    // 2. НАСТРОЙКА ТАБЛИЦЫ ДЕДЛАЙНОВ (tw_home_deadlines)
-    ui->tw_home_deadlines->setColumnCount(4);
-    ui->tw_home_deadlines->setHorizontalHeaderLabels({
-        "Проект", "Задача / Этап", "Срок", "Статус"
-    });
-
-    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-
-    ui->tw_home_deadlines->setRowCount(0);
-
-    // 3. ТЕСТОВЫЕ ДАННЫЕ ДЛЯ ТАБЛИЦЫ
-    struct DeadlineDemo {
-        QString project;
-        QString task;
-        QString date;
-        QString priority; // "High", "Normal", "Overdue"
-    };
-
-    QList<DeadlineDemo> deadlines = {
-        {"Гараж на 2 авто", "Заливка фундамента", "05.05.2026", "Overdue"},
-        {"Коттедж 'Скандинавия'", "Монтаж стропил", "10.05.2026", "High"},
-        {"Гостевой дом", "Подписание акта сдачи", "12.05.2026", "Normal"},
-        {"Вилла 'Майами'", "Закупка арматуры", "15.05.2026", "Normal"},
-        {"Реконструкция", "Демонтаж перекрытий", "20.05.2026", "Normal"}
-    };
-
-    // 4. ЗАПОЛНЕНИЕ ТАБЛИЦЫ С ИНДИКАЦИЕЙ
-    for (int i = 0; i < deadlines.size(); ++i) {
-        ui->tw_home_deadlines->insertRow(i);
-
-        ui->tw_home_deadlines->setItem(i, 0, new QTableWidgetItem(deadlines[i].project));
-        ui->tw_home_deadlines->setItem(i, 1, new QTableWidgetItem(deadlines[i].task));
-
-        QTableWidgetItem *dateItem = new QTableWidgetItem(deadlines[i].date);
-        dateItem->setTextAlignment(Qt::AlignCenter);
-        ui->tw_home_deadlines->setItem(i, 2, dateItem);
-
-        // Статус с цветовой индикацией важности
-        QTableWidgetItem *statusItem = new QTableWidgetItem();
-        if (deadlines[i].priority == "Overdue") {
-            statusItem->setText("🛑 ПРОСРОЧЕНО");
-            statusItem->setForeground(Qt::red);
-            dateItem->setForeground(Qt::red); // Красная дата для просрочки
-        } else if (deadlines[i].priority == "High") {
-            statusItem->setText("⚠️ СРОЧНО");
-            statusItem->setForeground(QColor(255, 140, 0)); // Оранжевый
-        } else {
-            statusItem->setText("📅 В ПЛАНЕ");
-            statusItem->setForeground(Qt::gray);
-        }
-
-        statusItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
-        statusItem->setTextAlignment(Qt::AlignCenter);
-        ui->tw_home_deadlines->setItem(i, 3, statusItem);
-    }
-
-    // Тонкие настройки таблицы
-    ui->tw_home_deadlines->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tw_home_deadlines->verticalHeader()->setVisible(false);
-    ui->tw_home_deadlines->setShowGrid(false); // Для современного "чистого" вида
-}
-
 void MainWidget::on_lw_admin_roles_itemSelectionChanged()
 {
     bool hasSelection = (ui->lw_admin_roles->currentItem() != nullptr);
@@ -1131,7 +495,6 @@ void MainWidget::on_pb_admin_role_edit_clicked()
 
     openRoleEditor(roleId);
 }
-
 
 void MainWidget::on_pb_admin_role_delete_clicked()
 {
@@ -1198,7 +561,6 @@ void MainWidget::on_pb_admin_role_delete_clicked()
     }
 }
 
-
 void MainWidget::on_pb_admin_user_edit_clicked()
 {
     QListWidgetItem *selectedItem = ui->lw_admin_users->currentItem();
@@ -1211,7 +573,6 @@ void MainWidget::on_pb_admin_user_edit_clicked()
 
     openUserEditor(targetUserId);
 }
-
 
 void MainWidget::on_lw_admin_users_itemSelectionChanged()
 {
@@ -1609,6 +970,7 @@ void MainWidget::on_tw_clients_itemSelectionChanged()
     loadClientDetails(clientId);
     loadClientProjects(clientId);
     loadClientFinance(clientId);
+    loadClientFiles(clientId);
 
     ui->splitter_2->setSizes({1, 1});
 }
@@ -1849,6 +1211,458 @@ void MainWidget::loadClientFinance(int clientId)
     ui->tw_payments->blockSignals(false);
 }
 
+void MainWidget::loadProjectStages(int projectId)
+{
+    ui->tw_project_stages->blockSignals(true);
+    ui->tw_project_stages->clearContents();
+    ui->tw_project_stages->setRowCount(0);
+
+    ui->tw_project_stages->setColumnCount(5);
+    ui->tw_project_stages->setHorizontalHeaderLabels({"Этап", "План", "Факт (начало)", "Статус", "Ответственный"});
+
+    ui->tw_project_stages->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_project_stages->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    ui->tw_project_stages->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    ui->tw_project_stages->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    ui->tw_project_stages->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+
+    ui->tw_project_stages->verticalHeader()->setVisible(false);
+    ui->tw_project_stages->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_project_stages->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) return;
+
+    QSqlQuery query(db);
+    query.prepare(R"(
+        SELECT ps.id, ps.stage_name, ps.date_start_plan, ps.date_end_plan,
+               ps.date_start_fact, ps.status, u.login AS responsible_name
+        FROM project_stages ps
+        LEFT JOIN users u ON ps.responsible_id = u.id
+        WHERE ps.project_id = :project_id
+        ORDER BY ps.date_start_plan ASC
+    )");
+    query.bindValue(":project_id", projectId);
+
+    if (!query.exec()) {
+        qWarning() << "Ошибка загрузки этапов проекта:" << query.lastError().text();
+        return;
+    }
+
+    int totalStages = 0;
+    int completedStages = 0;
+    int row = 0;
+
+    while (query.next()) {
+        ui->tw_project_stages->insertRow(row);
+        totalStages++;
+
+        int stageId = query.value("id").toInt();
+        QString name = query.value("stage_name").toString();
+        QDate startPlan = query.value("date_start_plan").toDate();
+        QDate endPlan = query.value("date_end_plan").toDate();
+        QVariant startFactVar = query.value("date_start_fact");
+        QString statusDb = query.value("status").toString();
+        QString respName = query.value("responsible_name").toString();
+
+        if (respName.isEmpty()) respName = "—";
+
+        if (statusDb == "done") {
+            completedStages++;
+        }
+
+        QTableWidgetItem *nameItem = new QTableWidgetItem(name);
+        nameItem->setData(Qt::UserRole, stageId);
+        ui->tw_project_stages->setItem(row, 0, nameItem);
+
+        QString planStr = QString("%1 - %2").arg(startPlan.toString("dd.MM.yyyy"), endPlan.toString("dd.MM.yyyy"));
+        QTableWidgetItem *planItem = new QTableWidgetItem(planStr);
+        planItem->setTextAlignment(Qt::AlignCenter);
+        ui->tw_project_stages->setItem(row, 1, planItem);
+
+        QString factStr = "—";
+        QTableWidgetItem *factItem = new QTableWidgetItem();
+
+        if (!startFactVar.isNull() && startFactVar.toDate().isValid()) {
+            QDate startFact = startFactVar.toDate();
+            factStr = startFact.toString("dd.MM.yyyy");
+
+            if (startFact > startPlan) {
+                factItem->setForeground(QColor(211, 47, 47));
+                factItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+                factItem->setToolTip("Внимание: Этап начат с опозданием от плана!");
+            }
+        }
+        factItem->setText(factStr);
+        factItem->setTextAlignment(Qt::AlignCenter);
+        ui->tw_project_stages->setItem(row, 2, factItem);
+
+        QString statusStr;
+        QColor statusColor;
+
+        if (statusDb == "pending") {
+            statusStr = "Ожидает";
+            statusColor = QColor(158, 158, 158);
+        } else if (statusDb == "in_progress") {
+            statusStr = "В работе";
+            statusColor = QColor(25, 118, 210);
+        } else if (statusDb == "done") {
+            statusStr = "Завершен";
+            statusColor = QColor(56, 142, 60);
+        }
+
+        QTableWidgetItem *statusItem = new QTableWidgetItem(statusStr);
+        statusItem->setForeground(statusColor);
+        statusItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+        statusItem->setTextAlignment(Qt::AlignCenter);
+        ui->tw_project_stages->setItem(row, 3, statusItem);
+
+        QTableWidgetItem *respItem = new QTableWidgetItem(respName);
+        respItem->setTextAlignment(Qt::AlignCenter);
+        ui->tw_project_stages->setItem(row, 4, respItem);
+
+        row++;
+    }
+
+    int progressPercent = 0;
+    if (totalStages > 0) {
+        progressPercent = (completedStages * 100) / totalStages;
+    }
+
+    ui->pb_stage_progress->setValue(progressPercent);
+
+    ui->tw_project_stages->blockSignals(false);
+}
+
+void MainWidget::loadProjectEstimates(int projectId)
+{
+    ui->tw_project_estimates->blockSignals(true);
+    ui->tw_project_estimates->clearContents();
+    ui->tw_project_estimates->setRowCount(0);
+
+    ui->tw_project_estimates->setColumnCount(5);
+    ui->tw_project_estimates->setHorizontalHeaderLabels({"Наименование", "Тип", "Кол-во", "Цена за ед.", "Итого"});
+
+    ui->tw_project_estimates->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_project_estimates->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    ui->tw_project_estimates->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    ui->tw_project_estimates->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    ui->tw_project_estimates->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+
+    ui->tw_project_estimates->verticalHeader()->setVisible(false);
+    ui->tw_project_estimates->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_project_estimates->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        ui->tw_project_estimates->blockSignals(false);
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare(R"(
+        SELECT pe.id, m.name AS material_name, pe.group_type,
+               pe.quantity, pe.price_per_unit,
+               (pe.quantity * pe.price_per_unit) AS total_row_sum
+        FROM project_estimates pe
+        LEFT JOIN materials m ON pe.material_id = m.id
+        WHERE pe.project_id = :project_id
+        ORDER BY pe.group_type, m.name ASC
+    )");
+    query.bindValue(":project_id", projectId);
+
+    if (!query.exec()) {
+        qWarning() << "Ошибка загрузки сметы:" << query.lastError().text();
+        ui->tw_project_estimates->blockSignals(false);
+        return;
+    }
+
+    QLocale russianLocale(QLocale::Russian, QLocale::Russia);
+    double grandTotal = 0.0;
+    int row = 0;
+
+    while (query.next()) {
+        ui->tw_project_estimates->insertRow(row);
+
+        int estimateId = query.value("id").toInt();
+        QString name = query.value("material_name").toString();
+        QString groupTypeDb = query.value("group_type").toString();
+
+        double quantity = query.value("quantity").toDouble();
+        double price = query.value("price_per_unit").toDouble();
+        double rowTotal = query.value("total_row_sum").toDouble();
+
+        if (name.isEmpty()) name = "— Неизвестная позиция —";
+
+        grandTotal += rowTotal;
+
+        QTableWidgetItem *nameItem = new QTableWidgetItem(name);
+        nameItem->setData(Qt::UserRole, estimateId);
+        ui->tw_project_estimates->setItem(row, 0, nameItem);
+
+        QString typeStr;
+        QColor typeColor;
+
+        if (groupTypeDb == "material") {
+            typeStr = "Материал";
+            typeColor = QColor(25, 118, 210);
+        } else if (groupTypeDb == "work") {
+            typeStr = "Работа";
+            typeColor = QColor(230, 81, 0);
+        } else if (groupTypeDb == "service") {
+            typeStr = "Услуга";
+            typeColor = QColor(156, 39, 176);
+        } else {
+            typeStr = groupTypeDb;
+            typeColor = QColor(0, 0, 0);
+        }
+
+        QTableWidgetItem *typeItem = new QTableWidgetItem(typeStr);
+        typeItem->setForeground(typeColor);
+        typeItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+        typeItem->setTextAlignment(Qt::AlignCenter);
+        ui->tw_project_estimates->setItem(row, 1, typeItem);
+
+        QTableWidgetItem *qtyItem = new QTableWidgetItem(russianLocale.toString(quantity, 'f', 3));
+        qtyItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        ui->tw_project_estimates->setItem(row, 2, qtyItem);
+
+        QTableWidgetItem *priceItem = new QTableWidgetItem(russianLocale.toString(price, 'f', 2) + " ₽");
+        priceItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        ui->tw_project_estimates->setItem(row, 3, priceItem);
+
+        QTableWidgetItem *totalItem = new QTableWidgetItem(russianLocale.toString(rowTotal, 'f', 2) + " ₽");
+        totalItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        totalItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+        ui->tw_project_estimates->setItem(row, 4, totalItem);
+
+        row++;
+    }
+
+    if (ui->lb_estimate_total_sum) {
+        ui->lb_estimate_total_sum->setText(russianLocale.toString(grandTotal, 'f', 2) + " ₽");
+    }
+
+    ui->tw_project_estimates->blockSignals(false);
+}
+
+void MainWidget::loadProjectFiles(int projectId)
+{
+    ui->tw_project_files->blockSignals(true);
+    ui->tw_project_files->clearContents();
+    ui->tw_project_files->setRowCount(0);
+
+    ui->tw_project_files->setColumnCount(3);
+    ui->tw_project_files->setHorizontalHeaderLabels({"Имя файла", "Тип", "Дата загрузки"});
+
+    ui->tw_project_files->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_project_files->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    ui->tw_project_files->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+
+    ui->tw_project_files->verticalHeader()->setVisible(false);
+    ui->tw_project_files->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_project_files->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        ui->tw_project_files->blockSignals(false);
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT id, file_name, file_path, file_type, uploaded_at "
+                  "FROM project_files "
+                  "WHERE project_id = :project_id "
+                  "ORDER BY uploaded_at DESC");
+    query.bindValue(":project_id", projectId);
+
+    if (!query.exec()) {
+        qWarning() << "Ошибка загрузки файлов проекта:" << query.lastError().text();
+        ui->tw_project_files->blockSignals(false);
+        return;
+    }
+
+    int row = 0;
+    while (query.next()) {
+        ui->tw_project_files->insertRow(row);
+
+        int fileId = query.value("id").toInt();
+        QString name = query.value("file_name").toString();
+        QString path = query.value("file_path").toString();
+        QString type = query.value("file_type").toString();
+        QDateTime uploadedAt = query.value("uploaded_at").toDateTime();
+
+        QTableWidgetItem *nameItem = new QTableWidgetItem(name);
+        nameItem->setData(Qt::UserRole, fileId);
+        nameItem->setData(Qt::UserRole + 1, path);
+
+        QTableWidgetItem *typeItem = new QTableWidgetItem(type.toUpper());
+        typeItem->setTextAlignment(Qt::AlignCenter);
+
+        QTableWidgetItem *dateItem = new QTableWidgetItem(uploadedAt.toString("dd.MM.yyyy HH:mm"));
+        dateItem->setTextAlignment(Qt::AlignCenter);
+
+        ui->tw_project_files->setItem(row, 0, nameItem);
+        ui->tw_project_files->setItem(row, 1, typeItem);
+        ui->tw_project_files->setItem(row, 2, dateItem);
+
+        row++;
+    }
+
+    ui->tw_project_files->blockSignals(false);
+}
+
+void MainWidget::loadClientFiles(int clientId)
+{
+    ui->tw_client_files->blockSignals(true);
+    ui->tw_client_files->clearContents();
+    ui->tw_client_files->setRowCount(0);
+
+    ui->tw_client_files->setColumnCount(3);
+    ui->tw_client_files->setHorizontalHeaderLabels({"Имя файла", "Тип", "Дата загрузки"});
+
+    ui->tw_client_files->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_client_files->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    ui->tw_client_files->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+
+    ui->tw_client_files->verticalHeader()->setVisible(false);
+    ui->tw_client_files->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_client_files->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) {
+        ui->tw_client_files->blockSignals(false);
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("SELECT id, file_name, file_path, file_type, uploaded_at "
+                  "FROM client_files "
+                  "WHERE client_id = :client_id "
+                  "ORDER BY uploaded_at DESC");
+    query.bindValue(":client_id", clientId);
+
+    if (!query.exec()) {
+        ui->tw_client_files->blockSignals(false);
+        return;
+    }
+
+    int row = 0;
+    while (query.next()) {
+        ui->tw_client_files->insertRow(row);
+
+        int fileId = query.value("id").toInt();
+        QString name = query.value("file_name").toString();
+        QString path = query.value("file_path").toString();
+        QString type = query.value("file_type").toString();
+        QDateTime uploadedAt = query.value("uploaded_at").toDateTime();
+
+        QTableWidgetItem *nameItem = new QTableWidgetItem(name);
+        nameItem->setData(Qt::UserRole, fileId);
+        nameItem->setData(Qt::UserRole + 1, path);
+
+        QTableWidgetItem *typeItem = new QTableWidgetItem(type.toUpper());
+        typeItem->setTextAlignment(Qt::AlignCenter);
+
+        QTableWidgetItem *dateItem = new QTableWidgetItem(uploadedAt.toString("dd.MM.yyyy HH:mm"));
+        dateItem->setTextAlignment(Qt::AlignCenter);
+
+        ui->tw_client_files->setItem(row, 0, nameItem);
+        ui->tw_client_files->setItem(row, 1, typeItem);
+        ui->tw_client_files->setItem(row, 2, dateItem);
+
+        row++;
+    }
+
+    ui->tw_client_files->blockSignals(false);
+}
+
+void MainWidget::loadHomeDashboard()
+{
+    QString baseStyle = "border-radius: 10px; padding: 15px;";
+    ui->lb_stat_projects->setStyleSheet(baseStyle + "background-color: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb;");
+    ui->lb_stat_clients->setStyleSheet(baseStyle + "background-color: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9;");
+    ui->lb_stat_finance->setStyleSheet(baseStyle + "background-color: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7;");
+
+    ui->lb_new_client_card->setStyleSheet(baseStyle + "background-color: #fff3e0; color: #e65100; border: 1px solid #ffe0b2;");
+    ui->lb_new_project_card->setStyleSheet(baseStyle + "background-color: #f1f8e9; color: #33691e; border: 1px solid #dcedc8;");
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) return;
+
+    QSqlQuery query(db);
+
+    int projectsCount = 0;
+    if (query.exec("SELECT COUNT(*) FROM projects WHERE status IN ('design', 'building')") && query.next()) {
+        projectsCount = query.value(0).toInt();
+    }
+    ui->lb_stat_projects->setText(QString("<html><center><span style='font-size: 11pt; font-weight: normal; color: #555555;'>Активные проекты</span><br/><span style='font-size: 22pt; font-weight: bold;'>%1</span></center></html>").arg(projectsCount));
+
+    int clientsCount = 0;
+    if (query.exec("SELECT COUNT(*) FROM clients") && query.next()) {
+        clientsCount = query.value(0).toInt();
+    }
+    ui->lb_stat_clients->setText(QString("<html><center><span style='font-size: 11pt; font-weight: normal; color: #555555;'>Всего клиентов</span><br/><span style='font-size: 22pt; font-weight: bold;'>%1</span></center></html>").arg(clientsCount));
+
+    double totalFinance = 0.0;
+    if (query.exec("SELECT SUM(amount) FROM client_payments") && query.next()) {
+        totalFinance = query.value(0).toDouble();
+    }
+    QLocale russianLocale(QLocale::Russian, QLocale::Russia);
+    QString financeStr = russianLocale.toString(totalFinance, 'f', 2) + " ₽";
+    ui->lb_stat_finance->setText(QString("<html><center><span style='font-size: 11pt; font-weight: normal; color: #555555;'>Общие поступления</span><br/><span style='font-size: 22pt; font-weight: bold;'>%1</span></center></html>").arg(financeStr));
+
+    ui->lb_new_client_card->setText("<html><center><span style='font-size: 24pt; font-weight: bold;'>+</span><br/><span style='font-size: 11pt; font-weight: normal;'>Новый клиент</span></center></html>");
+    ui->lb_new_project_card->setText("<html><center><span style='font-size: 24pt; font-weight: bold;'>+</span><br/><span style='font-size: 11pt; font-weight: normal;'>Новый проект</span></center></html>");
+
+    ui->tw_home_deadlines->blockSignals(true);
+    ui->tw_home_deadlines->clearContents();
+    ui->tw_home_deadlines->setRowCount(0);
+
+    ui->tw_home_deadlines->setColumnCount(3);
+    ui->tw_home_deadlines->setHorizontalHeaderLabels({"Проект", "Этап", "Дедлайн"});
+    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    ui->tw_home_deadlines->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    ui->tw_home_deadlines->verticalHeader()->setVisible(false);
+    ui->tw_home_deadlines->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tw_home_deadlines->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    if (query.exec("SELECT p.id AS project_id, p.name AS project_name, ps.stage_name, ps.date_end_plan "
+                   "FROM project_stages ps "
+                   "JOIN projects p ON ps.project_id = p.id "
+                   "WHERE ps.status IN ('pending', 'in_progress') AND ps.date_end_plan IS NOT NULL "
+                   "ORDER BY ps.date_end_plan ASC LIMIT 15")) {
+        int row = 0;
+        while (query.next()) {
+            ui->tw_home_deadlines->insertRow(row);
+
+            QTableWidgetItem *projItem = new QTableWidgetItem(query.value("project_name").toString());
+            projItem->setData(Qt::UserRole, query.value("project_id").toInt());
+
+            QTableWidgetItem *stageItem = new QTableWidgetItem(query.value("stage_name").toString());
+
+            QDate deadline = query.value("date_end_plan").toDate();
+            QTableWidgetItem *dateItem = new QTableWidgetItem(deadline.toString("dd.MM.yyyy"));
+            dateItem->setTextAlignment(Qt::AlignCenter);
+
+            if (deadline < QDate::currentDate()) {
+                dateItem->setForeground(QColor(211, 47, 47));
+                dateItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+            } else if (deadline <= QDate::currentDate().addDays(7)) {
+                dateItem->setForeground(QColor(230, 81, 0));
+            }
+
+            ui->tw_home_deadlines->setItem(row, 0, projItem);
+            ui->tw_home_deadlines->setItem(row, 1, stageItem);
+            ui->tw_home_deadlines->setItem(row, 2, dateItem);
+
+            row++;
+        }
+    }
+    ui->tw_home_deadlines->blockSignals(false);
+}
+
 void MainWidget::loadProjectsTable()
 {
     ui->tw_projects_list->blockSignals(true);
@@ -1975,6 +1789,9 @@ void MainWidget::on_tw_projects_list_itemSelectionChanged()
     int projectId = selectedItem->data(Qt::UserRole).toInt();
 
     loadProjectDetails(projectId);
+    loadProjectStages(projectId);
+    loadProjectEstimates(projectId);
+    loadProjectFiles(projectId);
 
     ui->splitter_5->setSizes({1, 1});
 }
@@ -1985,7 +1802,7 @@ void MainWidget::clearProjectDetailsUI()
 
     ui->lb_proj_client_ref->clear();
 
-    ui->le_proj_status->clear();
+    ui->lb_proj_status->clear();
 
     ui->pb_stage_progress->setValue(0);
 
@@ -1999,6 +1816,18 @@ void MainWidget::clearProjectDetailsUI()
 
     ui->tw_payments->clearContents();
     ui->tw_payments->setRowCount(0);
+
+    ui->tw_project_stages->clearContents();
+    ui->tw_project_stages->setRowCount(0);
+
+    ui->pb_stage_progress->setValue(0);
+
+    ui->tw_project_estimates->clearContents();
+    ui->tw_project_estimates->setRowCount(0);
+
+    if(ui->lb_estimate_total_sum) {
+        ui->lb_estimate_total_sum->setText("0 ₽");
+    }
 }
 
 void MainWidget::loadProjectDetails(int projectId)
@@ -2062,7 +1891,7 @@ void MainWidget::loadProjectDetails(int projectId)
             statusText = "Неизвестно";
         }
 
-        ui->le_proj_status->setText(statusText);
+        ui->lb_proj_status->setText(statusText);
         ui->pb_stage_progress->setValue(progressValue);
 
         ui->pte_project_description->setPlainText(QString("Адрес объекта:\n%1").arg(address));
@@ -2141,7 +1970,6 @@ void MainWidget::on_tw_client_projects_itemDoubleClicked(QTableWidgetItem *item)
     }
 }
 
-
 void MainWidget::on_pb_add_payment_clicked()
 {
     QTableWidgetItem *selectedItem = ui->tw_clients->item(ui->tw_clients->currentRow(), 0);
@@ -2161,7 +1989,6 @@ void MainWidget::on_pb_add_payment_clicked()
     }
 }
 
-
 void MainWidget::on_pb_project_create_clicked()
 {
     ProjectEditorDialog dialog(-1, this);
@@ -2177,3 +2004,503 @@ void MainWidget::on_pb_project_create_clicked()
     }
 }
 
+void MainWidget::on_pb_project_edit_clicked()
+{
+    QTableWidgetItem *selectedItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!selectedItem) {
+        return;
+    }
+
+    int projectId = selectedItem->data(Qt::UserRole).toInt();
+
+    ProjectEditorDialog dialog(projectId, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+
+        loadProjectsTable();
+
+        loadProjectDetails(projectId);
+
+        QMessageBox::information(this, "Успех", "Данные проекта обвнолены!");
+
+        for (int row = 0; row < ui->tw_projects_list->rowCount(); ++row) {
+            QTableWidgetItem *item = ui->tw_projects_list->item(row, 0);
+            if (item && item->data(Qt::UserRole).toInt() == projectId) {
+                ui->tw_projects_list->setCurrentItem(item);
+                break;
+            }
+        }
+    }
+}
+
+void MainWidget::on_pb_stage_add_clicked()
+{
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите проект в главном списке.");
+        return;
+    }
+
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    ProjectStageDialog dialog(projectId, -1, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        loadProjectStages(projectId);
+
+        QMessageBox::information(this, "Успех", "Новый этап успешно добавлен!");
+    }
+}
+
+void MainWidget::on_pb_stage_edit_clicked()
+{
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) return;
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    QTableWidgetItem *stageItem = ui->tw_project_stages->item(ui->tw_project_stages->currentRow(), 0);
+    if (!stageItem) {
+        QMessageBox::warning(this, "Внимание", "Выберите этап для редактирования.");
+        return;
+    }
+
+    int stageId = stageItem->data(Qt::UserRole).toInt();
+
+    ProjectStageDialog dialog(projectId, stageId, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        loadProjectStages(projectId);
+
+        for (int row = 0; row < ui->tw_project_stages->rowCount(); ++row) {
+            QTableWidgetItem *item = ui->tw_project_stages->item(row, 0);
+            if (item && item->data(Qt::UserRole).toInt() == stageId) {
+                ui->tw_project_stages->setCurrentItem(item);
+                break;
+            }
+        }
+
+        QMessageBox::information(this, "Успех", "Изменения этапа успешно сохранены!");
+    }
+}
+
+void MainWidget::on_pb_stage_delete_clicked()
+{
+    QTableWidgetItem *stageItem = ui->tw_project_stages->item(ui->tw_project_stages->currentRow(), 0);
+    if (!stageItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите этап для удаления.");
+        return;
+    }
+
+    int stageId = stageItem->data(Qt::UserRole).toInt();
+
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) return;
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  "Вы действительно хотите удалить выбранный этап?\n"
+                                  "Это действие нельзя отменить, и оно повлияет на расчет прогресса проекта.",
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::No) {
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM project_stages WHERE id = :id");
+    query.bindValue(":id", stageId);
+
+    if (query.exec()) {
+        loadProjectStages(projectId);
+
+        QMessageBox::information(this, "Успех", "Этап успешно удален!");
+    } else {
+        QMessageBox::critical(this, "Ошибка БД", "Не удалось удалить этап:\n" + query.lastError().text());
+    }
+}
+
+void MainWidget::on_tw_project_estimates_itemSelectionChanged()
+{
+    bool hasSelection = ui->tw_project_estimates->currentRow() >= 0;
+    ui->pb_estimate_edit->setEnabled(hasSelection);
+    ui->pb_estimate_delete->setEnabled(hasSelection);
+}
+
+
+void MainWidget::on_pb_estimate_add_clicked()
+{
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите проект в главном списке.");
+        return;
+    }
+
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    ProjectEstimateDialog dialog(projectId, -1, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        loadProjectEstimates(projectId);
+        QMessageBox::information(this, "Успех", "Позиция успешно добавлена в смету!");
+    }
+}
+
+
+void MainWidget::on_pb_estimate_edit_clicked()
+{
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) return;
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    QTableWidgetItem *estItem = ui->tw_project_estimates->item(ui->tw_project_estimates->currentRow(), 0);
+    if (!estItem) {
+        QMessageBox::warning(this, "Внимание", "Выберите позицию сметы для редактирования.");
+        return;
+    }
+
+    int estimateId = estItem->data(Qt::UserRole).toInt();
+
+    ProjectEstimateDialog dialog(projectId, estimateId, this);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        loadProjectEstimates(projectId);
+
+        for (int row = 0; row < ui->tw_project_estimates->rowCount(); ++row) {
+            QTableWidgetItem *item = ui->tw_project_estimates->item(row, 0);
+            if (item && item->data(Qt::UserRole).toInt() == estimateId) {
+                ui->tw_project_estimates->setCurrentItem(item);
+                break;
+            }
+        }
+
+        QMessageBox::information(this, "Успех", "Изменения позиции успешно сохранены!");
+    }
+}
+
+
+void MainWidget::on_pb_estimate_delete_clicked()
+{
+    QTableWidgetItem *estItem = ui->tw_project_estimates->item(ui->tw_project_estimates->currentRow(), 0);
+    if (!estItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите позицию сметы для удаления.");
+        return;
+    }
+
+    int estimateId = estItem->data(Qt::UserRole).toInt();
+
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) return;
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  "Вы действительно хотите удалить выбранную позицию из сметы?",
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::No) {
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM project_estimates WHERE id = :id");
+    query.bindValue(":id", estimateId);
+
+    if (query.exec()) {
+        loadProjectEstimates(projectId);
+        QMessageBox::information(this, "Успех", "Позиция успешно удалена из сметы!");
+    } else {
+        QMessageBox::critical(this, "Ошибка БД", "Не удалось удалить позицию:\n" + query.lastError().text());
+    }
+}
+
+void MainWidget::on_pb_client_project_add_clicked()
+{
+    QTableWidgetItem *clientItem = ui->tw_clients->item(ui->tw_clients->currentRow(), 0);
+    if (!clientItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите клиента в списке.");
+        return;
+    }
+
+    int clientId = clientItem->data(Qt::UserRole).toInt();
+
+    ProjectEditorDialog dialog(-1, this);
+    dialog.setClient(clientId);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        loadProjectsTable();
+
+        loadClientProjects(clientId);
+
+        QMessageBox::information(this, "Успех", "Проект для клиента успешно создан!");
+    }
+}
+
+void MainWidget::on_pb_project_file_add_clicked()
+{
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите проект в главном списке.");
+        return;
+    }
+
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    QString sourceFilePath = QFileDialog::getOpenFileName(this, "Выберите файл для загрузки", "", "Все файлы (*.*)");
+    if (sourceFilePath.isEmpty()) {
+        return;
+    }
+
+    QString destFolder = FileStorageManager::getProjectFolder(projectId);
+    QString savedFilePath = FileStorageManager::copyFileToStorage(sourceFilePath, destFolder);
+
+    if (savedFilePath.isEmpty()) {
+        QMessageBox::critical(this, "Ошибка", "Не удалось скопировать файл в хранилище.");
+        return;
+    }
+
+    QFileInfo fileInfo(savedFilePath);
+    QString fileName = fileInfo.fileName();
+    QString fileType = fileInfo.suffix();
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO project_files (project_id, file_name, file_path, file_type, uploaded_at) "
+                  "VALUES (:project_id, :file_name, :file_path, :file_type, :uploaded_at)");
+    query.bindValue(":project_id", projectId);
+    query.bindValue(":file_name", fileName);
+    query.bindValue(":file_path", savedFilePath);
+    query.bindValue(":file_type", fileType);
+    query.bindValue(":uploaded_at", QDateTime::currentDateTime());
+
+    if (query.exec()) {
+        loadProjectFiles(projectId);
+        QMessageBox::information(this, "Успех", "Файл успешно загружен!");
+    } else {
+        QFile::remove(savedFilePath);
+        QMessageBox::critical(this, "Ошибка БД", "Не удалось сохранить запись о файле:\n" + query.lastError().text());
+    }
+}
+
+void MainWidget::on_tw_project_files_itemDoubleClicked(QTableWidgetItem *item)
+{
+    int row = item->row();
+    QTableWidgetItem *nameItem = ui->tw_project_files->item(row, 0);
+
+    if (nameItem) {
+        QString filePath = nameItem->data(Qt::UserRole + 1).toString();
+        QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
+    }
+}
+
+void MainWidget::on_pb_project_file_delete_clicked()
+{
+    QTableWidgetItem *fileItem = ui->tw_project_files->item(ui->tw_project_files->currentRow(), 0);
+    if (!fileItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите файл для удаления.");
+        return;
+    }
+
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) return;
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    int fileId = fileItem->data(Qt::UserRole).toInt();
+    QString filePath = fileItem->data(Qt::UserRole + 1).toString();
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  "Вы действительно хотите удалить этот файл?\nОН БУДЕТ УДАЛЕН С ЖЕСТКОГО ДИСКА!",
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::No) {
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM project_files WHERE id = :id");
+    query.bindValue(":id", fileId);
+
+    if (query.exec()) {
+        QFile::remove(filePath);
+
+        loadProjectFiles(projectId);
+        QMessageBox::information(this, "Успех", "Файл успешно удален!");
+    } else {
+        QMessageBox::critical(this, "Ошибка БД", "Не удалось удалить запись о файле:\n" + query.lastError().text());
+    }
+}
+
+void MainWidget::on_pb_project_open_folder_clicked()
+{
+    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
+    if (!projItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите проект в главном списке.");
+        return;
+    }
+
+    int projectId = projItem->data(Qt::UserRole).toInt();
+    QString folderPath = FileStorageManager::getProjectFolder(projectId);
+
+    QDesktopServices::openUrl(QUrl::fromLocalFile(folderPath));
+}
+
+void MainWidget::on_pb_client_file_add_clicked()
+{
+    QTableWidgetItem *clientItem = ui->tw_clients->item(ui->tw_clients->currentRow(), 0);
+    if (!clientItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите клиента в списке.");
+        return;
+    }
+
+    int clientId = clientItem->data(Qt::UserRole).toInt();
+
+    QString sourceFilePath = QFileDialog::getOpenFileName(this, "Выберите файл для загрузки", "", "Все файлы (*.*)");
+    if (sourceFilePath.isEmpty()) {
+        return;
+    }
+
+    QString destFolder = FileStorageManager::getClientFolder(clientId);
+    QString savedFilePath = FileStorageManager::copyFileToStorage(sourceFilePath, destFolder);
+
+    if (savedFilePath.isEmpty()) {
+        QMessageBox::critical(this, "Ошибка", "Не удалось скопировать файл в хранилище.");
+        return;
+    }
+
+    QFileInfo fileInfo(savedFilePath);
+    QString fileName = fileInfo.fileName();
+    QString fileType = fileInfo.suffix();
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO client_files (client_id, file_name, file_path, file_type, uploaded_at) "
+                  "VALUES (:client_id, :file_name, :file_path, :file_type, :uploaded_at)");
+    query.bindValue(":client_id", clientId);
+    query.bindValue(":file_name", fileName);
+    query.bindValue(":file_path", savedFilePath);
+    query.bindValue(":file_type", fileType);
+    query.bindValue(":uploaded_at", QDateTime::currentDateTime());
+
+    if (query.exec()) {
+        loadClientFiles(clientId);
+        QMessageBox::information(this, "Успех", "Файл успешно загружен!");
+    } else {
+        QFile::remove(savedFilePath);
+        QMessageBox::critical(this, "Ошибка БД", "Не удалось сохранить запись о файле:\n" + query.lastError().text());
+    }
+}
+
+void MainWidget::on_pb_client_file_delete_clicked()
+{
+    QTableWidgetItem *fileItem = ui->tw_client_files->item(ui->tw_client_files->currentRow(), 0);
+    if (!fileItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите файл для удаления.");
+        return;
+    }
+
+    QTableWidgetItem *clientItem = ui->tw_clients->item(ui->tw_clients->currentRow(), 0);
+    if (!clientItem) return;
+    int clientId = clientItem->data(Qt::UserRole).toInt();
+
+    int fileId = fileItem->data(Qt::UserRole).toInt();
+    QString filePath = fileItem->data(Qt::UserRole + 1).toString();
+
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Подтверждение удаления",
+                                  "Вы действительно хотите удалить этот файл?\nОН БУДЕТ УДАЛЕН С ЖЕСТКОГО ДИСКА!",
+                                  QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::No) {
+        return;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM client_files WHERE id = :id");
+    query.bindValue(":id", fileId);
+
+    if (query.exec()) {
+        QFile::remove(filePath);
+        loadClientFiles(clientId);
+        QMessageBox::information(this, "Успех", "Файл успешно удален!");
+    } else {
+        QMessageBox::critical(this, "Ошибка БД", "Не удалось удалить запись о файле:\n" + query.lastError().text());
+    }
+}
+
+void MainWidget::on_tw_client_files_itemDoubleClicked(QTableWidgetItem *item)
+{
+    int row = item->row();
+    QTableWidgetItem *nameItem = ui->tw_client_files->item(row, 0);
+
+    if (nameItem) {
+        QString filePath = nameItem->data(Qt::UserRole + 1).toString();
+        QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
+    }
+}
+
+void MainWidget::on_pb_client_open_folder_clicked()
+{
+    QTableWidgetItem *clientItem = ui->tw_clients->item(ui->tw_clients->currentRow(), 0);
+    if (!clientItem) {
+        QMessageBox::warning(this, "Внимание", "Сначала выберите клиента в списке.");
+        return;
+    }
+
+    int clientId = clientItem->data(Qt::UserRole).toInt();
+    QString folderPath = FileStorageManager::getClientFolder(clientId);
+
+    QDesktopServices::openUrl(QUrl::fromLocalFile(folderPath));
+}
+
+void MainWidget::on_lb_stat_projects_clicked()
+{
+    ui->lw_main->setCurrentRow(2);
+}
+
+void MainWidget::on_lb_stat_clients_clicked()
+{
+    ui->lw_main->setCurrentRow(1);
+}
+
+void MainWidget::on_tw_home_deadlines_itemDoubleClicked(QTableWidgetItem *item)
+{
+    int row = item->row();
+    QTableWidgetItem *projItem = ui->tw_home_deadlines->item(row, 0);
+
+    if (!projItem) {
+        return;
+    }
+
+    int projectId = projItem->data(Qt::UserRole).toInt();
+
+    ui->lw_main->setCurrentRow(2);
+
+    for (int i = 0; i < ui->tw_projects_list->rowCount(); ++i) {
+        QTableWidgetItem *listItem = ui->tw_projects_list->item(i, 0);
+        if (listItem && listItem->data(Qt::UserRole).toInt() == projectId) {
+            ui->tw_projects_list->setCurrentItem(listItem);
+            break;
+        }
+    }
+}
+
+void MainWidget::on_lb_new_client_card_clicked()
+{
+    ClientEditorDialog dialog(-1, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        loadHomeDashboard();
+    }
+}
+
+void MainWidget::on_lb_new_project_card_clicked()
+{
+    ProjectEditorDialog dialog(-1, this);
+    if (dialog.exec() == QDialog::Accepted) {
+        loadHomeDashboard();
+    }
+}

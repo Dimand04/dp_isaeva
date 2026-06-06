@@ -15,8 +15,17 @@ SimpleDictEditorDialog::SimpleDictEditorDialog(const QString &tableName, const Q
 
     setWindowTitle(windowTitle);
 
-    if (tableName == "categories") {
+    bool isCategories = (m_tableName == "categories");
+
+    ui->cb_type->setVisible(isCategories);
+    ui->lbl_type->setVisible(isCategories);
+
+    if (isCategories) {
         ui->le_name->setPlaceholderText("Название категории");
+        ui->cb_type->clear();
+        ui->cb_type->addItem("Материал", "material");
+        ui->cb_type->addItem("Работа", "work");
+        ui->cb_type->addItem("Услуга", "service");
     }
 
     if (m_itemId != -1) {
@@ -25,12 +34,27 @@ SimpleDictEditorDialog::SimpleDictEditorDialog(const QString &tableName, const Q
         QSqlDatabase db = QSqlDatabase::database();
         if (db.isOpen()) {
             QSqlQuery query(db);
-            QString sql = QString("SELECT name FROM %1 WHERE id = :id").arg(m_tableName);
+            QString sql;
+
+            if (isCategories) {
+                sql = QString("SELECT name, type FROM %1 WHERE id = :id").arg(m_tableName);
+            } else {
+                sql = QString("SELECT name FROM %1 WHERE id = :id").arg(m_tableName);
+            }
+
             query.prepare(sql);
             query.bindValue(":id", m_itemId);
 
             if (query.exec() && query.next()) {
-                ui->le_name->setText(query.value(0).toString());
+                ui->le_name->setText(query.value("name").toString());
+
+                if (isCategories) {
+                    QString typeDb = query.value("type").toString();
+                    int idx = ui->cb_type->findData(typeDb);
+                    if (idx >= 0) {
+                        ui->cb_type->setCurrentIndex(idx);
+                    }
+                }
             } else {
                 qWarning() << "Ошибка при загрузке данных справочника:" << query.lastError().text();
             }
@@ -54,22 +78,47 @@ void SimpleDictEditorDialog::on_pb_save_clicked()
         return;
     }
 
+    bool isCategories = (m_tableName == "categories");
+    QString type;
+
+    if (isCategories) {
+        type = ui->cb_type->currentData().toString();
+    }
+
     QSqlDatabase db = QSqlDatabase::database();
     QSqlQuery query(db);
 
     if (m_itemId == -1) {
-        QString sql = QString("INSERT INTO %1 (name) VALUES (:name)").arg(m_tableName);
+        QString sql;
+        if (isCategories) {
+            sql = QString("INSERT INTO %1 (name, type) VALUES (:name, :type)").arg(m_tableName);
+        } else {
+            sql = QString("INSERT INTO %1 (name) VALUES (:name)").arg(m_tableName);
+        }
+
         query.prepare(sql);
         query.bindValue(":name", name);
+        if (isCategories) {
+            query.bindValue(":type", type);
+        }
 
         if (!query.exec()) {
             QMessageBox::critical(this, "Ошибка", "Не удалось создать запись:\n" + query.lastError().text());
             return;
         }
     } else {
-        QString sql = QString("UPDATE %1 SET name = :name WHERE id = :id").arg(m_tableName);
+        QString sql;
+        if (isCategories) {
+            sql = QString("UPDATE %1 SET name = :name, type = :type WHERE id = :id").arg(m_tableName);
+        } else {
+            sql = QString("UPDATE %1 SET name = :name WHERE id = :id").arg(m_tableName);
+        }
+
         query.prepare(sql);
         query.bindValue(":name", name);
+        if (isCategories) {
+            query.bindValue(":type", type);
+        }
         query.bindValue(":id", m_itemId);
 
         if (!query.exec()) {
@@ -80,4 +129,3 @@ void SimpleDictEditorDialog::on_pb_save_clicked()
 
     accept();
 }
-

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ProjectEditorDialog</class>
- <widget class="QDialog" name="ProjectEditorDialog">
+ <class>ProjectEstimateDialog</class>
+ <widget class="QDialog" name="ProjectEstimateDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
-    <height>356</height>
+    <width>400</width>
+    <height>203</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,91 +17,82 @@
    <item row="0" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Клиент</string>
+      <string>Тип затрат</string>
      </property>
     </widget>
    </item>
    <item row="0" column="1">
-    <widget class="QComboBox" name="cb_clients"/>
+    <widget class="QComboBox" name="cb_group_type"/>
    </item>
    <item row="1" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>название проекта</string>
+      <string>Позиция</string>
      </property>
     </widget>
    </item>
    <item row="1" column="1">
-    <widget class="QLineEdit" name="le_name">
-     <property name="placeholderText">
-      <string/>
-     </property>
-    </widget>
+    <widget class="QComboBox" name="cb_material"/>
    </item>
    <item row="2" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
-      <string>Адрес</string>
+      <string>Количество</string>
      </property>
     </widget>
    </item>
    <item row="2" column="1">
-    <widget class="QPlainTextEdit" name="pte_address"/>
+    <widget class="QDoubleSpinBox" name="dsb_quantity">
+     <property name="decimals">
+      <number>3</number>
+     </property>
+     <property name="maximum">
+      <double>100000000000000004764729344.000000000000000</double>
+     </property>
+    </widget>
    </item>
    <item row="3" column="0">
     <widget class="QLabel" name="label_4">
      <property name="text">
-      <string>Статус</string>
+      <string>Цена за единицу</string>
      </property>
     </widget>
    </item>
    <item row="3" column="1">
-    <widget class="QComboBox" name="cb_statuses"/>
+    <widget class="QDoubleSpinBox" name="dsb_price">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+     <property name="suffix">
+      <string> ₽</string>
+     </property>
+     <property name="maximum">
+      <double>9999999999999999455752309870428160.000000000000000</double>
+     </property>
+    </widget>
    </item>
    <item row="4" column="0">
     <widget class="QLabel" name="label_5">
      <property name="text">
-      <string>Начало работ</string>
+      <string>Сумма</string>
      </property>
     </widget>
    </item>
    <item row="4" column="1">
-    <widget class="QDateEdit" name="de_start_date">
-     <property name="calendarPopup">
+    <widget class="QDoubleSpinBox" name="dsb_total_sum">
+     <property name="readOnly">
       <bool>true</bool>
      </property>
-    </widget>
-   </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="label_6">
-     <property name="text">
-      <string>Окончание работ</string>
+     <property name="suffix">
+      <string> ₽</string>
      </property>
-    </widget>
-   </item>
-   <item row="5" column="1">
-    <widget class="QDateEdit" name="de_end_date">
-     <property name="calendarPopup">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_7">
-     <property name="text">
-      <string>Бюджет проекта</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="1">
-    <widget class="QDoubleSpinBox" name="dsb_total_cost">
      <property name="maximum">
-      <double>10000000000000000000000.000000000000000</double>
+      <double>99999999999999997748809823456034029568.000000000000000</double>
      </property>
     </widget>
    </item>
-   <item row="8" column="0" colspan="2">
-    <layout class="QHBoxLayout" name="horizontalLayout">
+   <item row="5" column="0" colspan="2">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
