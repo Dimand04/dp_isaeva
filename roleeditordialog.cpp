@@ -167,4 +167,3 @@ void RoleEditorDialog::on_pb_ok_clicked()
         QMessageBox::critical(this, "Ошибка", "Не удалось зафиксировать изменения.");
     }
 }
-

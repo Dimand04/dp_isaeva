@@ -18,6 +18,8 @@
 #include <QFileDialog>
 #include "filestoragemanager.h"
 #include <QDesktopServices>
+#include <QPdfWriter>
+#include "editorwindow.h"
 
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
@@ -125,6 +127,9 @@ void MainWidget::sw_main_change(int index)
 
     case 4:
         qDebug() << "Экспорт";
+
+        loadExportData();
+
         break;
 
     case 5:
@@ -145,6 +150,7 @@ void MainWidget::sw_main_change(int index)
         loadAdminUsers();
         loadAdminRoles();
         fillNSITypes();
+        loadCompanySettings();
         ui->splitter_8->setSizes({1, 0});
 
         break;
@@ -1663,6 +1669,199 @@ void MainWidget::loadHomeDashboard()
     ui->tw_home_deadlines->blockSignals(false);
 }
 
+void MainWidget::loadExportData()
+{
+    ui->cb_export_project->blockSignals(true);
+    ui->cb_export_project->clear();
+    ui->cb_export_project->addItem("Выберите проект", 0);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (db.isOpen()) {
+        QSqlQuery query(db);
+        if (query.exec("SELECT id, name FROM projects ORDER BY name ASC")) {
+            while (query.next()) {
+                ui->cb_export_project->addItem(query.value("name").toString(), query.value("id").toInt());
+            }
+        }
+    }
+    ui->cb_export_project->blockSignals(false);
+
+    ui->cb_export_doc_type->blockSignals(true);
+    ui->cb_export_doc_type->clear();
+    ui->cb_export_doc_type->addItem("Смета проекта", "estimate");
+    ui->cb_export_doc_type->addItem("Договор подряда", "contract");
+    ui->cb_export_doc_type->blockSignals(false);
+
+    ui->cb_export_format->blockSignals(true);
+    ui->cb_export_format->clear();
+    ui->cb_export_format->addItem("PDF документ (*.pdf)", "pdf");
+    ui->cb_export_format->addItem("HTML веб-страница (*.html)", "html");
+    ui->cb_export_format->addItem("CSV таблица для Excel (*.csv)", "csv");
+    ui->cb_export_format->blockSignals(false);
+
+    updateExportPreview();
+}
+
+void MainWidget::updateExportPreview()
+{
+    int projectId = ui->cb_export_project->currentData().toInt();
+    QString docType = ui->cb_export_doc_type->currentData().toString();
+
+    if (projectId == 0) {
+        ui->tb_export_preview->setHtml("<html><body><h3 style='color: gray; text-align: center; margin-top: 50px;'>Выберите проект для предпросмотра</h3></body></html>");
+        ui->pb_export_save->setEnabled(false);
+        return;
+    }
+
+    ui->pb_export_save->setEnabled(true);
+
+    QSettings settings(QCoreApplication::applicationDirPath() + "/config.ini", QSettings::IniFormat);
+    QString compName = settings.value("Company/Name", "ООО «Строительная Компания»").toString();
+    QString compAddress = settings.value("Company/Address", "—").toString();
+    QString compPhone = settings.value("Company/Phone", "—").toString();
+
+    QString logoPath = settings.value("Company/LogoPath").toString();
+    if (!logoPath.isEmpty() && QFileInfo(logoPath).isRelative()) {
+        logoPath = QCoreApplication::applicationDirPath() + "/" + logoPath;
+    }
+
+    QString html = "<html><head><style>body { font-family: 'Segoe UI', sans-serif; }</style></head><body>";
+
+    html += "<table width='100%' style='border-bottom: 2px solid #1565c0; padding-bottom: 15px; margin-bottom: 20px;'><tr>";
+
+    if (!logoPath.isEmpty() && QFile::exists(logoPath)) {
+        html += QString("<td width='120'><img src='file:///%1' width='100' height='100' style='object-fit: contain;'/></td>").arg(logoPath);
+    }
+
+    html += QString("<td>"
+                    "<span style='font-size: 16pt; font-weight: bold; color: #1565c0;'>%1</span><br/>"
+                    "<span style='font-size: 10pt; color: #555555;'>Юр. адрес: %2<br/>"
+                    "Тел.: %3</span>"
+                    "</td></tr></table>")
+                .arg(compName, compAddress, compPhone);
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+
+    QString projectName;
+    QString clientName;
+    QString clientAddress;
+    QString clientPhone;
+
+    query.prepare("SELECT p.name, c.name AS client_name, c.address, c.phone "
+                  "FROM projects p "
+                  "JOIN clients c ON p.client_id = c.id "
+                  "WHERE p.id = :id");
+    query.bindValue(":id", projectId);
+
+    if (query.exec() && query.next()) {
+        projectName = query.value("name").toString();
+        clientName = query.value("client_name").toString();
+        clientAddress = query.value("address").toString();
+        clientPhone = query.value("phone").toString();
+    }
+
+    QLocale loc(QLocale::Russian, QLocale::Russia);
+
+    if (docType == "estimate") {
+        html += QString("<h2 style='text-align: center; color: #333;'>СМЕТА РАСХОДОВ</h2>");
+        html += QString("<h3 style='text-align: center; color: #666;'>по объекту: %1</h3>").arg(projectName);
+        html += QString("<p><b>Заказчик:</b> %1<br><b>Телефон:</b> %2</p>").arg(clientName, clientPhone);
+
+        html += "<table border='1' cellspacing='0' cellpadding='6' width='100%' style='border-collapse: collapse; border: 1px solid #ddd;'>";
+        html += "<tr bgcolor='#1565c0' style='color: white;'><th>Наименование</th><th>Кол-во</th><th>Цена (₽)</th><th>Сумма (₽)</th></tr>";
+
+        query.prepare("SELECT m.name AS material_name, pe.quantity, pe.price_per_unit, (pe.quantity * pe.price_per_unit) AS total "
+                      "FROM project_estimates pe "
+                      "LEFT JOIN materials m ON pe.material_id = m.id "
+                      "WHERE pe.project_id = :id "
+                      "ORDER BY pe.group_type, m.name");
+        query.bindValue(":id", projectId);
+
+        double grandTotal = 0.0;
+        if (query.exec()) {
+            while (query.next()) {
+                QString mName = query.value("material_name").toString();
+                double qty = query.value("quantity").toDouble();
+                double price = query.value("price_per_unit").toDouble();
+                double total = query.value("total").toDouble();
+                grandTotal += total;
+
+                html += QString("<tr><td>%1</td><td align='center'>%2</td><td align='right'>%3</td><td align='right'>%4</td></tr>")
+                            .arg(mName)
+                            .arg(loc.toString(qty, 'f', 3))
+                            .arg(loc.toString(price, 'f', 2))
+                            .arg(loc.toString(total, 'f', 2));
+            }
+        }
+
+        html += QString("<tr bgcolor='#f5f5f5'><td colspan='3' align='right'><b>ИТОГО ПО СМЕТЕ:</b></td><td align='right' style='color: #1565c0;'><b>%1</b></td></tr>")
+                    .arg(loc.toString(grandTotal, 'f', 2));
+        html += "</table>";
+        html += "<br><br><table width='100%'><tr>";
+        html += QString("<td><b>Подрядчик (%1):</b><br><br>___________________</td>").arg(compName);
+        html += QString("<td><b>Заказчик (%1):</b><br><br>___________________</td>").arg(clientName);
+        html += "</tr></table>";
+
+    } else if (docType == "contract") {
+        html += QString("<h2 style='text-align: center; color: #333;'>ДОГОВОР ПОДРЯДА № %1</h2>").arg(projectId);
+        html += QString("<p style='text-align: right;'>Дата: %1</p>").arg(QDate::currentDate().toString("dd.MM.yyyy"));
+        html += QString("<p><b>%1</b>, именуемое в дальнейшем «Подрядчик», в лице руководителя, с одной стороны, и <b>%2</b>, именуемый(ая) в дальнейшем «Заказчик», с другой стороны, заключили настоящий договор о нижеследующем:</p>").arg(compName, clientName);
+        html += "<p><b>1. ПРЕДМЕТ ДОГОВОРА</b><br>1.1. Подрядчик обязуется выполнить строительные/проектные работы по объекту <b>«" + projectName + "»</b>, а Заказчик обязуется принять результат работ и оплатить их.</p>";
+        html += "<p><b>2. ПРАВА И ОБЯЗАННОСТИ СТОРОН</b><br>2.1. Подрядчик обязан выполнить работы качественно и в срок.<br>2.2. Заказчик обязан обеспечить доступ на объект и своевременную оплату.</p>";
+
+        html += "<br><br><table width='100%' style='border-top: 1px solid #ccc; padding-top: 15px;'><tr>";
+        html += QString("<td width='50%' valign='top'><b>ПОДРЯДЧИК:</b><br/>%1<br/>Адрес: %2<br/>Тел: %3<br/><br/><br/>___________ / ___________</td>")
+                    .arg(compName, compAddress, compPhone);
+        html += QString("<td width='50%' valign='top'><b>ЗАКАЗЧИК:</b><br/>%1<br/>Адрес: %2<br/>Тел: %3<br/><br/><br/>___________ / ___________</td>")
+                    .arg(clientName, clientAddress, clientPhone);
+        html += "</tr></table>";
+    }
+
+    html += "</body></html>";
+    ui->tb_export_preview->setHtml(html);
+}
+
+void MainWidget::loadCompanySettings()
+{
+    QString iniPath = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings settings(iniPath, QSettings::IniFormat);
+
+    ui->le_company_name->setText(settings.value("Company/Name").toString());
+    ui->le_legal_address->setText(settings.value("Company/Address").toString());
+    ui->le_contact_phone->setText(settings.value("Company/Phone").toString());
+
+    QString logoPath = settings.value("Company/LogoPath").toString();
+
+    if (!logoPath.isEmpty() && QFileInfo(logoPath).isRelative()) {
+        logoPath = QCoreApplication::applicationDirPath() + "/" + logoPath;
+    }
+
+    m_companyLogoPath = settings.value("Company/LogoPath").toString();
+
+    if (!logoPath.isEmpty() && QFile::exists(logoPath)) {
+        QPixmap pixmap(logoPath);
+        ui->lb_logo->setPixmap(pixmap.scaled(ui->lb_logo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    } else {
+        ui->lb_logo->setText("Логотип не выбран");
+    }
+}
+
+void MainWidget::saveCompanySettings()
+{
+    QString iniPath = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings settings(iniPath, QSettings::IniFormat);
+
+    settings.setValue("Company/Name", ui->le_company_name->text().trimmed());
+    settings.setValue("Company/Address", ui->le_legal_address->text().trimmed());
+    settings.setValue("Company/Phone", ui->le_contact_phone->text().trimmed());
+    settings.setValue("Company/LogoPath", m_companyLogoPath);
+
+    settings.sync();
+
+    QMessageBox::information(this, "Успех", "Настройки компании успешно сохранены!");
+}
+
 void MainWidget::loadProjectsTable()
 {
     ui->tw_projects_list->blockSignals(true);
@@ -2503,4 +2702,171 @@ void MainWidget::on_lb_new_project_card_clicked()
     if (dialog.exec() == QDialog::Accepted) {
         loadHomeDashboard();
     }
+}
+
+void MainWidget::on_cb_export_project_currentIndexChanged(int index)
+{
+    Q_UNUSED(index);
+    updateExportPreview();
+}
+
+void MainWidget::on_cb_export_doc_type_currentIndexChanged(int index)
+{
+    Q_UNUSED(index);
+    updateExportPreview();
+}
+
+void MainWidget::on_pb_export_save_clicked()
+{
+    int projectId = ui->cb_export_project->currentData().toInt();
+    QString docType = ui->cb_export_doc_type->currentData().toString();
+    QString format = ui->cb_export_format->currentData().toString();
+    QString projectName = ui->cb_export_project->currentText();
+
+    if (projectId == 0) return;
+
+    if (docType == "contract" && format == "csv") {
+        QMessageBox::warning(this, "Внимание", "Формат CSV не подходит для текстового договора. Выберите PDF или HTML.");
+        return;
+    }
+
+    QString defaultFilter;
+    if (format == "pdf") defaultFilter = "PDF (*.pdf)";
+    else if (format == "html") defaultFilter = "HTML (*.html)";
+    else if (format == "csv") defaultFilter = "CSV (*.csv)";
+
+    QString defaultFileName = QString("%1_%2.%3")
+                                  .arg(docType == "estimate" ? "Smeta" : "Dogovor")
+                                  .arg(projectName.replace(QRegularExpression("[\\\\/:*?\"<>|]"), "_"))
+                                  .arg(format);
+
+    QString savePath = QFileDialog::getSaveFileName(this, "Сохранить документ", defaultFileName, defaultFilter);
+    if (savePath.isEmpty()) return;
+
+    if (format == "pdf") {
+        QPdfWriter pdfWriter(savePath);
+        pdfWriter.setPageSize(QPageSize(QPageSize::A4));
+        pdfWriter.setResolution(300);
+        QMarginsF margins(15, 15, 15, 15);
+        pdfWriter.setPageMargins(margins, QPageLayout::Millimeter);
+
+        QTextDocument doc;
+        doc.setHtml(ui->tb_export_preview->toHtml());
+        doc.print(&pdfWriter);
+
+    } else if (format == "html") {
+        QFile file(savePath);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            out.setEncoding(QStringConverter::Utf8);
+            out << ui->tb_export_preview->toHtml();
+            file.close();
+        }
+    } else if (format == "csv") {
+        QFile file(savePath);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&file);
+            out.setEncoding(QStringConverter::Utf8);
+            out.setGenerateByteOrderMark(true);
+
+            QSettings settings(QCoreApplication::applicationDirPath() + "/config.ini", QSettings::IniFormat);
+            QString compName = settings.value("Company/Name", "ООО «Строительная Компания»").toString();
+            QString compAddress = settings.value("Company/Address", "—").toString();
+            QString compPhone = settings.value("Company/Phone", "—").toString();
+
+            out << "Компания:;" << compName << "\n";
+            out << "Юр. адрес:;" << compAddress << "\n";
+            out << "Тел.:;" << compPhone << "\n";
+            out << "\n";
+
+            out << "Группа;Наименование;Количество;Цена за ед.;Сумма\n";
+
+            QSqlDatabase db = QSqlDatabase::database();
+            QSqlQuery query(db);
+            query.prepare("SELECT pe.group_type, m.name, pe.quantity, pe.price_per_unit, (pe.quantity * pe.price_per_unit) AS total "
+                          "FROM project_estimates pe "
+                          "LEFT JOIN materials m ON pe.material_id = m.id "
+                          "WHERE pe.project_id = :id "
+                          "ORDER BY pe.group_type, m.name");
+            query.bindValue(":id", projectId);
+
+            QLocale loc(QLocale::Russian, QLocale::Russia);
+            if (query.exec()) {
+                while (query.next()) {
+                    QString group = query.value("group_type").toString();
+                    QString name = query.value("name").toString();
+                    QString qty = loc.toString(query.value("quantity").toDouble(), 'f', 3);
+                    QString price = loc.toString(query.value("price_per_unit").toDouble(), 'f', 2);
+                    QString total = loc.toString(query.value("total").toDouble(), 'f', 2);
+
+                    qty.replace(loc.groupSeparator(), "");
+                    price.replace(loc.groupSeparator(), "");
+                    total.replace(loc.groupSeparator(), "");
+
+                    out << QString("\"%1\";\"%2\";\"%3\";\"%4\";\"%5\"\n")
+                               .arg(group, name, qty, price, total);
+                }
+            }
+            file.close();
+        }
+    }
+
+    QMessageBox::information(this, "Успех", "Документ успешно сохранён!");
+    QDesktopServices::openUrl(QUrl::fromLocalFile(savePath));
+}
+
+void MainWidget::on_pb_save_settings_clicked()
+{
+    saveCompanySettings();
+}
+
+void MainWidget::on_pb_select_logo_clicked()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, "Выберите логотип", "", "Изображения (*.png *.jpg *.jpeg)");
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    QString settingsFolder = FileStorageManager::getStorageRoot() + "/settings";
+    FileStorageManager::ensureFolderExists(settingsFolder);
+
+    QFileInfo fileInfo(filePath);
+    QString targetPath = settingsFolder + "/" + fileInfo.fileName();
+
+    if (QDir::toNativeSeparators(filePath) != QDir::toNativeSeparators(targetPath)) {
+        if (QFile::exists(targetPath)) {
+            QFile::remove(targetPath);
+        }
+
+        if (!QFile::copy(filePath, targetPath)) {
+            QMessageBox::critical(this, "Ошибка", "Не удалось скопировать логотип в локальное хранилище.");
+            return;
+        }
+    }
+
+    QDir appDir(QCoreApplication::applicationDirPath());
+    m_companyLogoPath = appDir.relativeFilePath(targetPath);
+
+    QPixmap pixmap(targetPath);
+    ui->lb_logo->setPixmap(pixmap.scaled(ui->lb_logo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
+void MainWidget::on_pb_open_editor_clicked()
+{
+    int currentRow = ui->tw_projects_list->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, "Внимание", "Пожалуйста, выберите проект из списка.");
+        return;
+    }
+
+    QTableWidgetItem *item = ui->tw_projects_list->item(currentRow, 0);
+    if (!item) {
+        return;
+    }
+
+    int projectId = item->data(Qt::UserRole).toInt();
+
+    EditorWindow *editor = new EditorWindow(projectId, this);
+    editor->setAttribute(Qt::WA_DeleteOnClose);
+    editor->show();
 }

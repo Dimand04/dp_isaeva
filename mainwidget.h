@@ -53,6 +53,10 @@ private slots:
     void loadProjectFiles(int projectId);
     void loadClientFiles(int clientId);
     void loadHomeDashboard();
+    void loadExportData();
+    void updateExportPreview();
+    void loadCompanySettings();
+    void saveCompanySettings();
 
     // Спорно
     void updateCatalogLayout();
@@ -135,8 +139,21 @@ private slots:
 
     void on_lb_new_project_card_clicked();
 
+    void on_cb_export_project_currentIndexChanged(int index);
+
+    void on_cb_export_doc_type_currentIndexChanged(int index);
+
+    void on_pb_export_save_clicked();
+
+    void on_pb_save_settings_clicked();
+
+    void on_pb_select_logo_clicked();
+
+    void on_pb_open_editor_clicked();
+
 private:
     Ui::MainWidget *ui;
     int m_userId;
+    QString m_companyLogoPath;
 };
 #endif // MAINWIDGET_H

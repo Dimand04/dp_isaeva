@@ -10,9 +10,14 @@ CONFIG += c++17
 
 SOURCES += \
     authwidget.cpp \
+    baseeditoritem.cpp \
     clickablelabel.cpp \
     clienteditordialog.cpp \
+    editorscene.cpp \
+    editorview.cpp \
+    editorwindow.cpp \
     filestoragemanager.cpp \
+    foundationblockitem.cpp \
     main.cpp \
     mainwidget.cpp \
     materialeditordialog.cpp \
@@ -22,13 +27,19 @@ SOURCES += \
     projectstagedialog.cpp \
     roleeditordialog.cpp \
     simpledicteditordialog.cpp \
-    usereditordialog.cpp
+    usereditordialog.cpp \
+    wallitem.cpp
 
 HEADERS += \
     authwidget.h \
+    baseeditoritem.h \
     clickablelabel.h \
     clienteditordialog.h \
+    editorscene.h \
+    editorview.h \
+    editorwindow.h \
     filestoragemanager.h \
+    foundationblockitem.h \
     mainwidget.h \
     materialeditordialog.h \
     paymentdialog.h \
@@ -37,11 +48,13 @@ HEADERS += \
     projectstagedialog.h \
     roleeditordialog.h \
     simpledicteditordialog.h \
-    usereditordialog.h
+    usereditordialog.h \
+    wallitem.h
 
 FORMS += \
     authwidget.ui \
     clienteditordialog.ui \
+    editorwindow.ui \
     mainwidget.ui \
     materialeditordialog.ui \
     paymentdialog.ui \

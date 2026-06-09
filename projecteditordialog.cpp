@@ -155,4 +155,3 @@ void ProjectEditorDialog::setClient(int clientId)
         ui->cb_clients->setCurrentIndex(index);
     }
 }
-
