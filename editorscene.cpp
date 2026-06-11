@@ -3,9 +3,10 @@
 #include <QPainter>
 #include <QPen>
 #include "wallitem.h"
+#include <QtMath>
 
 EditorScene::EditorScene(QObject *parent)
-    : QGraphicsScene(parent), m_currentMode(ModeCursor), m_isDrawing(false), m_currentWall(nullptr)
+    : QGraphicsScene(parent), m_currentMode(ModeCursor), m_isDrawing(false), m_currentWall(nullptr), m_gridSize(20)
 {
     setSceneRect(-5000, -5000, 10000, 10000);
 }
@@ -17,15 +18,14 @@ void EditorScene::setToolMode(ToolMode mode)
 
 void EditorScene::drawBackground(QPainter *painter, const QRectF &rect)
 {
-    int gridSize = 20;
-    qreal left = int(rect.left()) - (int(rect.left()) % gridSize);
-    qreal top = int(rect.top()) - (int(rect.top()) % gridSize);
+    qreal left = qFloor(rect.left() / m_gridSize) * m_gridSize;
+    qreal top = qFloor(rect.top() / m_gridSize) * m_gridSize;
 
     QVector<QLineF> lines;
-    for (qreal x = left; x < rect.right(); x += gridSize) {
+    for (qreal x = left; x < rect.right(); x += m_gridSize) {
         lines.append(QLineF(x, rect.top(), x, rect.bottom()));
     }
-    for (qreal y = top; y < rect.bottom(); y += gridSize) {
+    for (qreal y = top; y < rect.bottom(); y += m_gridSize) {
         lines.append(QLineF(rect.left(), y, rect.right(), y));
     }
 

@@ -38,7 +38,7 @@
      <x>0</x>
      <y>0</y>
      <width>1280</width>
-     <height>21</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -58,7 +58,7 @@
    <property name="minimumSize">
     <size>
      <width>110</width>
-     <height>164</height>
+     <height>175</height>
     </size>
    </property>
    <attribute name="dockWidgetArea">
@@ -89,7 +89,7 @@
           <x>0</x>
           <y>0</y>
           <width>110</width>
-          <height>621</height>
+          <height>603</height>
          </rect>
         </property>
         <attribute name="label">
@@ -181,7 +181,7 @@
           <x>0</x>
           <y>0</y>
           <width>110</width>
-          <height>621</height>
+          <height>603</height>
          </rect>
         </property>
         <attribute name="label">
@@ -213,6 +213,9 @@
      </property>
      <item row="0" column="0">
       <widget class="QStackedWidget" name="stackedWidget">
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
        <widget class="QWidget" name="page_5">
         <layout class="QGridLayout" name="gridLayout_5">
          <property name="leftMargin">
@@ -289,11 +292,14 @@
          </item>
          <item row="2" column="1">
           <widget class="QDoubleSpinBox" name="sb_found_height">
-           <property name="minimum">
-            <double>0.100000000000000</double>
-           </property>
            <property name="maximum">
             <double>100.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
+           </property>
+           <property name="value">
+            <double>0.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -301,6 +307,63 @@
           <widget class="QLabel" name="label_4">
            <property name="text">
             <string>Фундамент: Свойства</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page_3">
+        <layout class="QFormLayout" name="formLayout_2">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item row="0" column="0" colspan="2">
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Стена: Свойства</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Длина</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QDoubleSpinBox" name="sb_wall_length">
+           <property name="maximum">
+            <double>100.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>Толщина</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QDoubleSpinBox" name="sb_wall_thickness">
+           <property name="maximum">
+            <double>1000.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
            </property>
           </widget>
          </item>

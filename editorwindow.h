@@ -18,6 +18,9 @@ public:
 
 private slots:
     void onToolButtonClicked();
+    void onSelectionChanged();
+    void onFoundationPropertyChanged();
+    void onWallPropertyChanged();
 
 private:
     Ui::EditorWindow *ui;
