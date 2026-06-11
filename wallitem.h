@@ -3,6 +3,14 @@
 
 #include "baseeditoritem.h"
 #include <QLineF>
+#include <QGraphicsSceneHoverEvent>
+#include <QGraphicsSceneMouseEvent>
+
+enum WallInteractionState {
+    WallStateNone,
+    WallStateMoveStart,
+    WallStateMoveEnd
+};
 
 class WallItem : public BaseEditorItem
 {
@@ -21,9 +29,22 @@ public:
     qreal lengthInMeters() const;
     qreal thicknessInMm() const;
 
+    void setAngleInDegrees(qreal angleDeg);
+    qreal angleInDegrees() const;
+
+protected:
+    void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+
 private:
     QLineF m_line;
     qreal m_thickness;
+
+    QRectF startHandle() const;
+    QRectF endHandle() const;
+    WallInteractionState m_state;
 };
 
 #endif

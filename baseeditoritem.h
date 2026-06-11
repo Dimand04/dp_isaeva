@@ -17,6 +17,9 @@ public:
     virtual QRectF boundingRect() const override = 0;
     virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override = 0;
 
+signals:
+    void itemChanged();
+
 protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 

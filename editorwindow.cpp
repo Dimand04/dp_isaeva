@@ -29,6 +29,11 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->sb_found_height, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onFoundationPropertyChanged);
     connect(ui->sb_wall_length, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onWallPropertyChanged);
     connect(ui->sb_wall_thickness, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onWallPropertyChanged);
+    connect(ui->sb_found_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &EditorWindow::onFoundationPropertyChanged);
+
+    connect(ui->sb_wall_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &EditorWindow::onWallPropertyChanged);
 }
 
 EditorWindow::~EditorWindow()
@@ -54,64 +59,81 @@ void EditorWindow::onToolButtonClicked()
 
 void EditorWindow::onSelectionChanged()
 {
-    // Получаем список всех выделенных объектов
+    if (m_trackedItem) {
+        disconnect(m_trackedItem, &BaseEditorItem::itemChanged, this, nullptr);
+        m_trackedItem = nullptr;
+    }
+
     QList<QGraphicsItem*> selected = m_scene->selectedItems();
 
-    // Если ничего не выделено или выделено больше одного объекта - показываем пустую панель
     if (selected.isEmpty() || selected.size() > 1) {
         ui->stackedWidget->setCurrentIndex(0);
         return;
     }
 
     QGraphicsItem *item = selected.first();
+    m_trackedItem = dynamic_cast<BaseEditorItem*>(item);
 
-    // Пытаемся преобразовать базовый элемент в конкретные классы
     if (FoundationBlockItem *block = dynamic_cast<FoundationBlockItem*>(item)) {
-        ui->stackedWidget->setCurrentIndex(1); // Страница фундамента
+        ui->stackedWidget->setCurrentIndex(1);
 
-        // ВАЖНО: блокируем сигналы перед изменением значений, чтобы не вызвать
-        // бесконечный цикл обновлений (когда UI меняет объект, а объект снова меняет UI)
-        ui->sb_found_width->blockSignals(true);
-        ui->sb_found_height->blockSignals(true);
+        auto updateUI = [this, block]() {
+            ui->sb_found_width->blockSignals(true);
+            ui->sb_found_height->blockSignals(true);
+            ui->sb_found_angle->blockSignals(true);
 
-        ui->sb_found_width->setValue(block->widthInMeters());
-        ui->sb_found_height->setValue(block->heightInMeters());
+            ui->sb_found_width->setValue(block->widthInMeters());
+            ui->sb_found_height->setValue(block->heightInMeters());
+            ui->sb_found_angle->setValue(block->rotation());
 
-        ui->sb_found_width->blockSignals(false);
-        ui->sb_found_height->blockSignals(false);
+            ui->sb_found_width->blockSignals(false);
+            ui->sb_found_height->blockSignals(false);
+            ui->sb_found_angle->blockSignals(false);
+        };
+
+        updateUI();
+        connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
     }
     else if (WallItem *wall = dynamic_cast<WallItem*>(item)) {
-        ui->stackedWidget->setCurrentIndex(2); // Страница стены
+        ui->stackedWidget->setCurrentIndex(2);
 
-        ui->sb_wall_length->blockSignals(true);
-        ui->sb_wall_thickness->blockSignals(true);
+        auto updateUI = [this, wall]() {
+            ui->sb_wall_length->blockSignals(true);
+            ui->sb_wall_thickness->blockSignals(true);
+            ui->sb_wall_angle->blockSignals(true);
 
-        ui->sb_wall_length->setValue(wall->lengthInMeters());
-        ui->sb_wall_thickness->setValue(wall->thicknessInMm());
+            ui->sb_wall_length->setValue(wall->lengthInMeters());
+            ui->sb_wall_thickness->setValue(wall->thicknessInMm());
+            ui->sb_wall_angle->setValue(wall->angleInDegrees());
 
-        ui->sb_wall_length->blockSignals(false);
-        ui->sb_wall_thickness->blockSignals(false);
+            ui->sb_wall_length->blockSignals(false);
+            ui->sb_wall_thickness->blockSignals(false);
+            ui->sb_wall_angle->blockSignals(false);
+        };
+
+        updateUI();
+        connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
     }
 }
 
 void EditorWindow::onFoundationPropertyChanged()
 {
-    QList<QGraphicsItem*> selected = m_scene->selectedItems();
-    if (selected.size() == 1) {
-        if (FoundationBlockItem *block = dynamic_cast<FoundationBlockItem*>(selected.first())) {
+    if (m_trackedItem) {
+        if (FoundationBlockItem *block = dynamic_cast<FoundationBlockItem*>(m_trackedItem)) {
             block->setWidthInMeters(ui->sb_found_width->value());
             block->setHeightInMeters(ui->sb_found_height->value());
+            block->setRotation(ui->sb_found_angle->value());
         }
     }
 }
 
 void EditorWindow::onWallPropertyChanged()
 {
-    QList<QGraphicsItem*> selected = m_scene->selectedItems();
-    if (selected.size() == 1) {
-        if (WallItem *wall = dynamic_cast<WallItem*>(selected.first())) {
+    if (m_trackedItem) {
+        if (WallItem *wall = dynamic_cast<WallItem*>(m_trackedItem)) {
             wall->setLengthInMeters(ui->sb_wall_length->value());
             wall->setThicknessInMm(ui->sb_wall_thickness->value());
+            wall->setAngleInDegrees(ui->sb_wall_angle->value());
         }
     }
 }

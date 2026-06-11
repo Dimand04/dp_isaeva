@@ -38,7 +38,7 @@
      <x>0</x>
      <y>0</y>
      <width>1280</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -89,7 +89,7 @@
           <x>0</x>
           <y>0</y>
           <width>110</width>
-          <height>603</height>
+          <height>621</height>
          </rect>
         </property>
         <attribute name="label">
@@ -181,7 +181,7 @@
           <x>0</x>
           <y>0</y>
           <width>110</width>
-          <height>603</height>
+          <height>621</height>
          </rect>
         </property>
         <attribute name="label">
@@ -214,7 +214,7 @@
      <item row="0" column="0">
       <widget class="QStackedWidget" name="stackedWidget">
        <property name="currentIndex">
-        <number>0</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page_5">
         <layout class="QGridLayout" name="gridLayout_5">
@@ -310,6 +310,26 @@
            </property>
           </widget>
          </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_8">
+           <property name="text">
+            <string>Угол поворота</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QDoubleSpinBox" name="sb_found_angle">
+           <property name="suffix">
+            <string> °</string>
+           </property>
+           <property name="maximum">
+            <double>360.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>5.000000000000000</double>
+           </property>
+          </widget>
+         </item>
         </layout>
        </widget>
        <widget class="QWidget" name="page_3">
@@ -364,6 +384,23 @@
            </property>
            <property name="singleStep">
             <double>0.100000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_9">
+           <property name="text">
+            <string>Угол наклона</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QDoubleSpinBox" name="sb_wall_angle">
+           <property name="suffix">
+            <string> °</string>
+           </property>
+           <property name="maximum">
+            <double>360.000000000000000</double>
            </property>
           </widget>
          </item>

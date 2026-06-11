@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include "editorscene.h"
+#include "baseeditoritem.h"
 
 namespace Ui {
 class EditorWindow;
@@ -26,6 +27,7 @@ private:
     Ui::EditorWindow *ui;
     int m_projectId;
     EditorScene *m_scene;
+    BaseEditorItem *m_trackedItem = nullptr;
 };
 
 #endif
