@@ -1,54 +1,105 @@
-#include "windowitem.h"
-#include "wallitem.h"
 #include "dooritem.h"
+#include "wallitem.h"
+#include "windowitem.h"
 #include <QPen>
 #include <QBrush>
 #include <QCursor>
 #include <QtMath>
 #include <QGraphicsScene>
+#include <QPainterPath>
+#include <QPainterPathStroker>
 
-WindowItem::WindowItem(qreal width, WallItem *hostWall, QGraphicsItem *parent)
-    : BaseEditorItem(parent), m_width(width), m_hostWall(hostWall), m_isDragging(false), m_distance(0.0)
+DoorItem::DoorItem(qreal width, WallItem *hostWall, QGraphicsItem *parent)
+    : BaseEditorItem(parent), m_width(width), m_hostWall(hostWall), m_isDragging(false), m_distance(0.0), m_swingType(0)
 {
-    setZValue(1.0);
+    setZValue(1.1);
     if (m_hostWall) {
         m_depth = m_hostWall->thicknessInMm() * 0.1;
-        connect(m_hostWall, &BaseEditorItem::itemChanged, this, &WindowItem::updateGeometryToWall);
+        connect(m_hostWall, &BaseEditorItem::itemChanged, this, &DoorItem::updateGeometryToWall);
     } else {
         m_depth = 20.0;
     }
 }
 
-QRectF WindowItem::boundingRect() const
+QRectF DoorItem::boundingRect() const
 {
-    return QRectF(-m_width / 2, -m_depth / 2, m_width, m_depth).adjusted(-2, -2, 2, 2);
+    return QRectF(-m_width / 2 - m_width, -m_depth / 2 - m_width, m_width * 3, m_depth + m_width * 2).adjusted(-2, -2, 2, 2);
 }
 
-void WindowItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+QPainterPath DoorItem::shape() const
+{
+    QPainterPath path;
+
+    path.addRect(-m_width / 2, -m_depth / 2, m_width, m_depth);
+
+    QPainterPath arcPath;
+    qreal w = m_width;
+    qreal d = m_depth / 2;
+
+    if (m_swingType == 0) {
+        arcPath.moveTo(-w / 2, d);
+        arcPath.lineTo(-w / 2, d + w);
+        arcPath.arcTo(-w / 2 - w, d - w, w * 2, w * 2, 0, -90);
+    } else if (m_swingType == 1) {
+        arcPath.moveTo(w / 2, d);
+        arcPath.lineTo(w / 2, d + w);
+        arcPath.arcTo(w / 2 - w, d - w, w * 2, w * 2, 180, 90);
+    } else if (m_swingType == 2) {
+        arcPath.moveTo(-w / 2, -d);
+        arcPath.lineTo(-w / 2, -d - w);
+        arcPath.arcTo(-w / 2 - w, -d - w, w * 2, w * 2, 0, 90);
+    } else if (m_swingType == 3) {
+        arcPath.moveTo(w / 2, -d);
+        arcPath.lineTo(w / 2, -d - w);
+        arcPath.arcTo(w / 2 - w, -d - w, w * 2, w * 2, 180, -90);
+    }
+
+    QPainterPathStroker stroker;
+    stroker.setWidth(10);
+
+    return path.united(stroker.createStroke(arcPath));
+}
+
+void DoorItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
     painter->setBrush(Qt::white);
     painter->setPen(Qt::NoPen);
-    QRectF rect(-m_width / 2, -m_depth / 2, m_width, m_depth);
-    painter->drawRect(rect);
+    painter->drawRect(-m_width / 2, -m_depth / 2, m_width, m_depth);
 
     painter->setPen(QPen(QColor(50, 50, 50), 1));
     painter->drawLine(-m_width / 2, -m_depth / 2, -m_width / 2, m_depth / 2);
     painter->drawLine(m_width / 2, -m_depth / 2, m_width / 2, m_depth / 2);
 
-    painter->drawLine(-m_width / 2, -2, m_width / 2, -2);
-    painter->drawLine(-m_width / 2, 2, m_width / 2, 2);
+    qreal w = m_width;
+    qreal d = m_depth / 2;
+
+    painter->setPen(QPen(QColor(50, 50, 50), 1, Qt::SolidLine));
+
+    if (m_swingType == 0) {
+        painter->drawLine(-w / 2, d, -w / 2, d + w);
+        painter->drawArc(-w / 2 - w, d - w, w * 2, w * 2, 0 * 16, -90 * 16);
+    } else if (m_swingType == 1) {
+        painter->drawLine(w / 2, d, w / 2, d + w);
+        painter->drawArc(w / 2 - w, d - w, w * 2, w * 2, 180 * 16, 90 * 16);
+    } else if (m_swingType == 2) {
+        painter->drawLine(-w / 2, -d, -w / 2, -d - w);
+        painter->drawArc(-w / 2 - w, -d - w, w * 2, w * 2, 0 * 16, 90 * 16);
+    } else if (m_swingType == 3) {
+        painter->drawLine(w / 2, -d, w / 2, -d - w);
+        painter->drawArc(w / 2 - w, -d - w, w * 2, w * 2, 180 * 16, -90 * 16);
+    }
 
     if (isSelected()) {
         painter->setBrush(Qt::NoBrush);
         painter->setPen(QPen(QColor(21, 101, 192), 2, Qt::DashLine));
-        painter->drawRect(rect);
+        painter->drawRect(-m_width / 2, -m_depth / 2, m_width, m_depth);
     }
 }
 
-void WindowItem::setWidthInMeters(qreal widthMeters)
+void DoorItem::setWidthInMeters(qreal widthMeters)
 {
     qreal newWidth = widthMeters * 100.0;
     if (qAbs(m_width - newWidth) < 1e-5) return;
@@ -60,41 +111,31 @@ void WindowItem::setWidthInMeters(qreal widthMeters)
     emit itemChanged();
 }
 
-void WindowItem::setElevation(qreal elevation)
+void DoorItem::setSwingType(int type)
 {
-    if (qAbs(m_elevation - elevation) < 1e-5) return;
-    m_elevation = elevation;
+    if (m_swingType == type) return;
+    prepareGeometryChange();
+    m_swingType = type;
+    update();
     emit itemChanged();
 }
 
-void WindowItem::setProfileType(int index)
-{
-    if (m_profileType == index) return;
-    m_profileType = index;
-    emit itemChanged();
-}
-
-qreal WindowItem::widthInMeters() const
+qreal DoorItem::widthInMeters() const
 {
     return m_width / 100.0;
 }
 
-qreal WindowItem::elevation() const
+int DoorItem::swingType() const
 {
-    return m_elevation;
+    return m_swingType;
 }
 
-int WindowItem::profileType() const
-{
-    return m_profileType;
-}
-
-qreal WindowItem::distanceFromStart() const
+qreal DoorItem::distanceFromStart() const
 {
     return m_distance;
 }
 
-void WindowItem::setDistanceFromStart(qreal distanceMeters)
+void DoorItem::setDistanceFromStart(qreal distanceMeters)
 {
     if (qAbs(m_distance - distanceMeters) < 1e-5) return;
     if (!m_hostWall) return;
@@ -115,7 +156,7 @@ void WindowItem::setDistanceFromStart(qreal distanceMeters)
     }
 }
 
-void WindowItem::updateGeometryToWall()
+void DoorItem::updateGeometryToWall()
 {
     if (!m_hostWall) return;
 
@@ -141,7 +182,7 @@ void WindowItem::updateGeometryToWall()
     }
 }
 
-QVariant WindowItem::itemChange(GraphicsItemChange change, const QVariant &value)
+QVariant DoorItem::itemChange(GraphicsItemChange change, const QVariant &value)
 {
     if (change == ItemSelectedHasChanged) {
         update();
@@ -149,7 +190,7 @@ QVariant WindowItem::itemChange(GraphicsItemChange change, const QVariant &value
     return QGraphicsObject::itemChange(change, value);
 }
 
-void WindowItem::snapToPos(const QPointF &pt)
+void DoorItem::snapToPos(const QPointF &pt)
 {
     if (!m_hostWall) return;
 
@@ -254,7 +295,7 @@ void WindowItem::snapToPos(const QPointF &pt)
     }
 }
 
-void WindowItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
+void DoorItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
         m_isDragging = true;
@@ -263,7 +304,7 @@ void WindowItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
     BaseEditorItem::mousePressEvent(event);
 }
 
-void WindowItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+void DoorItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     if (m_isDragging) {
         snapToPos(event->scenePos());
@@ -272,14 +313,14 @@ void WindowItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     BaseEditorItem::mouseMoveEvent(event);
 }
 
-void WindowItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+void DoorItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     m_isDragging = false;
     setCursor(Qt::ArrowCursor);
     BaseEditorItem::mouseReleaseEvent(event);
 }
 
-qreal WindowItem::area() const
+qreal DoorItem::area() const
 {
     if (m_hostWall) {
         return widthInMeters() * (m_hostWall->thicknessInMm() / 1000.0);

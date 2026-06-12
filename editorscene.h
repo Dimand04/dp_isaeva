@@ -9,7 +9,8 @@ enum ToolMode {
     ModeFoundation,
     ModeWall,
     ModeNode,
-    ModeWindow
+    ModeWindow,
+    ModeDoor
 };
 
 class EditorScene : public QGraphicsScene

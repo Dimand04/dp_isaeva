@@ -3,8 +3,10 @@
 
 #include "baseeditoritem.h"
 #include <QLineF>
+#include <QPolygonF>
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
+#include <QSet>
 
 enum WallInteractionState {
     WallStateNone,
@@ -22,6 +24,7 @@ public:
     QLineF line() const { return m_line; }
 
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
     void setLengthInMeters(qreal lengthMeters);
@@ -32,21 +35,29 @@ public:
     void setAngleInDegrees(qreal angleDeg);
     qreal angleInDegrees() const;
 
-    QPainterPath shape() const override;
+    void updatePolygon();
+    qreal calculateExactArea() const;
+
+    qreal netArea() const;
 
 protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 
 private:
     QLineF m_line;
     qreal m_thickness;
+    QPolygonF m_polygon;
+    bool m_isUpdating;
+    WallInteractionState m_state;
+
+    QSet<WallItem*> m_connectedWalls;
 
     QRectF startHandle() const;
     QRectF endHandle() const;
-    WallInteractionState m_state;
 };
 
 #endif

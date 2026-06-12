@@ -170,3 +170,8 @@ qreal FoundationBlockItem::heightInMeters() const
 {
     return m_height / 100.0;
 }
+
+qreal FoundationBlockItem::area() const
+{
+    return widthInMeters() * heightInMeters();
+}

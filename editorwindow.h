@@ -23,6 +23,7 @@ private slots:
     void onFoundationPropertyChanged();
     void onWallPropertyChanged();
     void onWindowPropertyChanged();
+    void onDoorPropertyChanged();
 
 private:
     Ui::EditorWindow *ui;

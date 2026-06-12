@@ -1,27 +1,25 @@
-#ifndef WINDOWITEM_H
-#define WINDOWITEM_H
+#ifndef DOORITEM_H
+#define DOORITEM_H
 
 #include "baseeditoritem.h"
 #include <QGraphicsSceneMouseEvent>
 
 class WallItem;
 
-class WindowItem : public BaseEditorItem
+class DoorItem : public BaseEditorItem
 {
     Q_OBJECT
 public:
-    explicit WindowItem(qreal width, WallItem *hostWall, QGraphicsItem *parent = nullptr);
+    explicit DoorItem(qreal width, WallItem *hostWall, QGraphicsItem *parent = nullptr);
 
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
     void setWidthInMeters(qreal widthMeters);
-    void setElevation(qreal elevation);
-    void setProfileType(int index);
-
+    void setSwingType(int type);
     qreal widthInMeters() const;
-    qreal elevation() const;
-    int profileType() const;
+    int swingType() const;
 
     qreal distanceFromStart() const;
     void setDistanceFromStart(qreal distanceMeters);
@@ -44,8 +42,7 @@ protected:
 private:
     qreal m_width;
     qreal m_depth;
-    qreal m_elevation = 0.8;
-    int m_profileType = 0;
+    int m_swingType;
     qreal m_distance;
 
     WallItem *m_hostWall;

@@ -23,6 +23,7 @@ public:
     void setHeightInMeters(qreal heightMeters);
     qreal widthInMeters() const;
     qreal heightInMeters() const;
+    qreal area() const;
 
 protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;

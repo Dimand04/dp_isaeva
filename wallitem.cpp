@@ -6,19 +6,50 @@
 #include <QGraphicsScene>
 #include <QPainterPath>
 #include <QPainterPathStroker>
+#include "windowitem.h"
+#include "dooritem.h"
 
 WallItem::WallItem(const QPointF &startPoint, QGraphicsItem *parent)
-    : BaseEditorItem(parent), m_thickness(20.0), m_state(WallStateNone)
+    : BaseEditorItem(parent), m_thickness(20.0), m_isUpdating(false), m_state(WallStateNone)
 {
     setAcceptHoverEvents(true);
     m_line.setP1(QPointF(0, 0));
     m_line.setP2(QPointF(0, 0));
+    setPos(startPoint);
+    updatePolygon();
 }
 
 void WallItem::setEndPoint(const QPointF &endPoint)
 {
     prepareGeometryChange();
     m_line.setP2(mapFromScene(endPoint));
+    updatePolygon();
+    update();
+    emit itemChanged();
+}
+
+QRectF WallItem::startHandle() const
+{
+    return QRectF(-5, -5, 10, 10);
+}
+
+QRectF WallItem::endHandle() const
+{
+    return QRectF(m_line.p2().x() - 5, m_line.p2().y() - 5, 10, 10);
+}
+
+QRectF WallItem::boundingRect() const
+{
+    return m_polygon.boundingRect().adjusted(-10, -10, 10, 10);
+}
+
+QPainterPath WallItem::shape() const
+{
+    QPainterPath path;
+    path.addPolygon(m_polygon);
+    QPainterPathStroker stroker;
+    stroker.setWidth(10);
+    return path.united(stroker.createStroke(path));
 }
 
 void WallItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -26,23 +57,15 @@ void WallItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
-    QPen pen;
-    pen.setWidthF(m_thickness);
-    pen.setCapStyle(Qt::FlatCap);
+    painter->setBrush(QColor(230, 230, 230));
+    painter->setPen(QPen(QColor(50, 50, 50), 2, Qt::SolidLine, Qt::RoundCap, Qt::MiterJoin));
+    painter->drawPolygon(m_polygon);
 
     if (isSelected()) {
-        pen.setColor(QColor(21, 101, 192));
-    } else {
-        pen.setColor(QColor(50, 50, 50));
-    }
+        painter->setBrush(Qt::NoBrush);
+        painter->setPen(QPen(QColor(21, 101, 192), 2, Qt::DashLine));
+        painter->drawPolygon(m_polygon);
 
-    painter->setPen(pen);
-    painter->drawLine(m_line);
-
-    painter->setPen(QPen(Qt::white, 1, Qt::DashLine));
-    painter->drawLine(m_line);
-
-    if (isSelected()) {
         painter->setBrush(Qt::white);
         painter->setPen(QPen(QColor(21, 101, 192), 1));
         painter->drawRect(startHandle());
@@ -54,20 +77,31 @@ void WallItem::setLengthInMeters(qreal lengthMeters)
 {
     prepareGeometryChange();
     qreal lengthPx = lengthMeters * 100.0;
-
     qreal angleRad = qDegreesToRadians(m_line.angle());
     qreal newX = m_line.p1().x() + lengthPx * qCos(angleRad);
     qreal newY = m_line.p1().y() - lengthPx * qSin(angleRad);
-
     m_line.setP2(QPointF(newX, newY));
+    updatePolygon();
     update();
+    emit itemChanged();
 }
 
 void WallItem::setThicknessInMm(qreal thicknessMm)
 {
     prepareGeometryChange();
     m_thickness = thicknessMm * 0.1;
+    updatePolygon();
     update();
+    emit itemChanged();
+}
+
+void WallItem::setAngleInDegrees(qreal angleDeg)
+{
+    prepareGeometryChange();
+    m_line.setAngle(angleDeg);
+    updatePolygon();
+    update();
+    emit itemChanged();
 }
 
 qreal WallItem::lengthInMeters() const
@@ -80,18 +114,11 @@ qreal WallItem::thicknessInMm() const
     return m_thickness / 0.1;
 }
 
-QRectF WallItem::startHandle() const {
-    return QRectF(-5, -5, 10, 10);
-}
-
-QRectF WallItem::endHandle() const {
-    return QRectF(m_line.p2().x() - 5, m_line.p2().y() - 5, 10, 10);
-}
-
-QRectF WallItem::boundingRect() const
+qreal WallItem::angleInDegrees() const
 {
-    qreal extra = m_thickness / 2.0 + 15.0;
-    return QRectF(m_line.p1(), m_line.p2()).normalized().adjusted(-extra, -extra, extra, extra);
+    qreal angle = m_line.angle();
+    if (angle < 0) angle += 360;
+    return angle;
 }
 
 void WallItem::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
@@ -144,8 +171,8 @@ void WallItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         prepareGeometryChange();
         m_line.setP2(mapFromScene(snappedScenePos));
 
+        updatePolygon();
         if (scene()) scene()->update();
-
         emit itemChanged();
 
     } else if (m_state == WallStateMoveStart) {
@@ -167,8 +194,8 @@ void WallItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         setPos(snappedStartScene);
         m_line.setP2(mapFromScene(oldEndScene));
 
+        updatePolygon();
         if (scene()) scene()->update();
-
         emit itemChanged();
 
     } else {
@@ -182,27 +209,159 @@ void WallItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     BaseEditorItem::mouseReleaseEvent(event);
 }
 
-void WallItem::setAngleInDegrees(qreal angleDeg)
+QVariant WallItem::itemChange(GraphicsItemChange change, const QVariant &value)
 {
-    prepareGeometryChange();
-    m_line.setAngle(angleDeg);
-    update();
+    if (change == ItemPositionHasChanged || change == ItemTransformHasChanged) {
+        updatePolygon();
+    }
+    return BaseEditorItem::itemChange(change, value);
 }
 
-qreal WallItem::angleInDegrees() const
+void WallItem::updatePolygon()
 {
-    qreal angle = m_line.angle();
-    if (angle < 0) angle += 360;
-    return angle;
+    if (m_isUpdating) return;
+    m_isUpdating = true;
+
+    QPointF p1 = m_line.p1();
+    QPointF p2 = m_line.p2();
+
+    QLineF axis = m_line;
+    QLineF normal = axis.normalVector();
+    normal.setLength(m_thickness / 2.0);
+    QPointF off(normal.dx(), normal.dy());
+
+    QPointF p1L = p1 + off;
+    QPointF p1R = p1 - off;
+    QPointF p2L = p2 + off;
+    QPointF p2R = p2 - off;
+
+    QLineF myLeft(p1L, p2L);
+    QLineF myRight(p1R, p2R);
+
+    QSet<WallItem*> currentlyTouching;
+
+    if (scene()) {
+        QPointF sp1 = mapToScene(p1);
+        QPointF sp2 = mapToScene(p2);
+
+        for (QGraphicsItem* item : scene()->items()) {
+            if (item == this) continue;
+            WallItem* other = dynamic_cast<WallItem*>(item);
+            if (!other) continue;
+
+            QPointF osp1 = other->mapToScene(other->line().p1());
+            QPointF osp2 = other->mapToScene(other->line().p2());
+
+            bool p1_b1 = QLineF(sp1, osp1).length() < 1.0;
+            bool p1_b2 = QLineF(sp1, osp2).length() < 1.0;
+            bool p2_b1 = QLineF(sp2, osp1).length() < 1.0;
+            bool p2_b2 = QLineF(sp2, osp2).length() < 1.0;
+
+            if (p1_b1 || p1_b2 || p2_b1 || p2_b2) {
+                currentlyTouching.insert(other);
+
+                qreal angleDiff = qAbs(axis.angleTo(other->line()));
+                if (angleDiff > 180) angleDiff = 360 - angleDiff;
+
+                if (angleDiff > 1.0 && angleDiff < 179.0) {
+                    QLineF oAxis(mapFromScene(osp1), mapFromScene(osp2));
+                    QLineF oNorm = oAxis.normalVector();
+                    oNorm.setLength(other->thicknessInMm() * 0.1 / 2.0);
+                    QPointF oOff(oNorm.dx(), oNorm.dy());
+
+                    QLineF oLeft(oAxis.p1() + oOff, oAxis.p2() + oOff);
+                    QLineF oRight(oAxis.p1() - oOff, oAxis.p2() - oOff);
+
+                    QPointF int1, int2;
+                    bool intersect1 = false, intersect2 = false;
+
+                    if (p1_b1 || p1_b2) {
+                        bool sameDir = p1_b1;
+                        if (sameDir) {
+                            intersect1 = (myLeft.intersects(oLeft, &int1) == QLineF::UnboundedIntersection);
+                            intersect2 = (myRight.intersects(oRight, &int2) == QLineF::UnboundedIntersection);
+                        } else {
+                            intersect1 = (myLeft.intersects(oRight, &int1) == QLineF::UnboundedIntersection);
+                            intersect2 = (myRight.intersects(oLeft, &int2) == QLineF::UnboundedIntersection);
+                        }
+                        if (intersect1) p1L = int1;
+                        if (intersect2) p1R = int2;
+                    }
+
+                    if (p2_b1 || p2_b2) {
+                        bool sameDir = p2_b2;
+                        if (sameDir) {
+                            intersect1 = (myLeft.intersects(oLeft, &int1) == QLineF::UnboundedIntersection);
+                            intersect2 = (myRight.intersects(oRight, &int2) == QLineF::UnboundedIntersection);
+                        } else {
+                            intersect1 = (myLeft.intersects(oRight, &int1) == QLineF::UnboundedIntersection);
+                            intersect2 = (myRight.intersects(oLeft, &int2) == QLineF::UnboundedIntersection);
+                        }
+                        if (intersect1) p2L = int1;
+                        if (intersect2) p2R = int2;
+                    }
+                }
+            }
+        }
+    }
+
+    if (m_polygon.isEmpty() || m_polygon[0] != p1L || m_polygon[1] != p2L || m_polygon[2] != p2R || m_polygon[3] != p1R) {
+        prepareGeometryChange();
+        m_polygon.clear();
+        m_polygon << p1L << p2L << p2R << p1R;
+    }
+
+    QSet<WallItem*> detachedWalls = m_connectedWalls;
+    detachedWalls.subtract(currentlyTouching);
+
+    m_connectedWalls = currentlyTouching;
+
+    for (WallItem* detached : detachedWalls) {
+        if (detached->scene() == scene()) {
+            detached->updatePolygon();
+            detached->update();
+        }
+    }
+    for (WallItem* attached : currentlyTouching) {
+        if (attached->scene() == scene()) {
+            attached->updatePolygon();
+            attached->update();
+        }
+    }
+
+    m_isUpdating = false;
 }
 
-QPainterPath WallItem::shape() const
+qreal WallItem::calculateExactArea() const
 {
-    QPainterPath path;
-    path.moveTo(m_line.p1());
-    path.lineTo(m_line.p2());
+    if (m_polygon.isEmpty()) return 0.0;
+    qreal area = 0.0;
+    int j = m_polygon.count() - 1;
+    for (int i = 0; i < m_polygon.count(); i++) {
+        area += (m_polygon[j].x() + m_polygon[i].x()) * (m_polygon[j].y() - m_polygon[i].y());
+        j = i;
+    }
+    return qAbs(area / 2.0) / 10000.0;
+}
 
-    QPainterPathStroker stroker;
-    stroker.setWidth(m_thickness + 20);
-    return stroker.createStroke(path);
+qreal WallItem::netArea() const
+{
+    qreal grossArea = calculateExactArea();
+    qreal deductions = 0.0;
+
+    if (scene()) {
+        for (QGraphicsItem *item : scene()->items()) {
+            if (WindowItem *w = dynamic_cast<WindowItem*>(item)) {
+                if (w->hostWall() == this) {
+                    deductions += w->widthInMeters() * (thicknessInMm() / 1000.0);
+                }
+            } else if (DoorItem *d = dynamic_cast<DoorItem*>(item)) {
+                if (d->hostWall() == this) {
+                    deductions += d->widthInMeters() * (thicknessInMm() / 1000.0);
+                }
+            }
+        }
+    }
+
+    return qMax(0.0, grossArea - deductions);
 }

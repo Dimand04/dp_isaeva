@@ -5,6 +5,7 @@
 #include "wallitem.h"
 #include <QtMath>
 #include "windowitem.h"
+#include "dooritem.h"
 
 EditorScene::EditorScene(QObject *parent)
     : QGraphicsScene(parent), m_currentMode(ModeCursor), m_isDrawing(false), m_currentWall(nullptr), m_gridSize(20)
@@ -66,6 +67,15 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
                 window->snapToPos(event->scenePos());
 
                 window->setRotation(-wall->line().angle());
+            }
+            return;
+        } else if (m_currentMode == ModeDoor) {
+            QGraphicsItem *clickedItem = itemAt(event->scenePos(), QTransform());
+            if (WallItem *wall = dynamic_cast<WallItem*>(clickedItem)) {
+                DoorItem *door = new DoorItem(90, wall);
+                addItem(door);
+                door->snapToPos(event->scenePos());
+                door->setRotation(-wall->line().angle());
             }
             return;
         }

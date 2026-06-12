@@ -13,6 +13,7 @@ SOURCES += \
     baseeditoritem.cpp \
     clickablelabel.cpp \
     clienteditordialog.cpp \
+    dooritem.cpp \
     editorscene.cpp \
     editorview.cpp \
     editorwindow.cpp \
@@ -36,6 +37,7 @@ HEADERS += \
     baseeditoritem.h \
     clickablelabel.h \
     clienteditordialog.h \
+    dooritem.h \
     editorscene.h \
     editorview.h \
     editorwindow.h \
