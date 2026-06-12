@@ -8,6 +8,12 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QSet>
 
+enum WallAlignment {
+    AlignCenter = 0,
+    AlignLeft = 1,
+    AlignRight = 2
+};
+
 enum WallInteractionState {
     WallStateNone,
     WallStateMoveStart,
@@ -35,6 +41,9 @@ public:
     void setAngleInDegrees(qreal angleDeg);
     qreal angleInDegrees() const;
 
+    void setAlignment(int alignment);
+    int alignment() const;
+
     void updatePolygon();
     qreal calculateExactArea() const;
 
@@ -53,6 +62,7 @@ private:
     QPolygonF m_polygon;
     bool m_isUpdating;
     WallInteractionState m_state;
+    int m_alignment = 0;
 
     QSet<WallItem*> m_connectedWalls;
 

@@ -227,13 +227,29 @@ void WallItem::updatePolygon()
 
     QLineF axis = m_line;
     QLineF normal = axis.normalVector();
-    normal.setLength(m_thickness / 2.0);
-    QPointF off(normal.dx(), normal.dy());
+    if (normal.length() == 0) {
+        m_isUpdating = false;
+        return;
+    }
 
-    QPointF p1L = p1 + off;
-    QPointF p1R = p1 - off;
-    QPointF p2L = p2 + off;
-    QPointF p2R = p2 - off;
+    normal.setLength(1.0);
+    QPointF dir(normal.dx(), normal.dy());
+
+    qreal leftDist = m_thickness / 2.0;
+    qreal rightDist = m_thickness / 2.0;
+
+    if (m_alignment == 1) {
+        leftDist = 0.0;
+        rightDist = m_thickness;
+    } else if (m_alignment == 2) {
+        leftDist = m_thickness;
+        rightDist = 0.0;
+    }
+
+    QPointF p1L = p1 + dir * leftDist;
+    QPointF p1R = p1 - dir * rightDist;
+    QPointF p2L = p2 + dir * leftDist;
+    QPointF p2R = p2 - dir * rightDist;
 
     QLineF myLeft(p1L, p2L);
     QLineF myRight(p1R, p2R);
@@ -266,39 +282,41 @@ void WallItem::updatePolygon()
                 if (angleDiff > 1.0 && angleDiff < 179.0) {
                     QLineF oAxis(mapFromScene(osp1), mapFromScene(osp2));
                     QLineF oNorm = oAxis.normalVector();
-                    oNorm.setLength(other->thicknessInMm() * 0.1 / 2.0);
-                    QPointF oOff(oNorm.dx(), oNorm.dy());
+                    if (oNorm.length() > 0) {
+                        oNorm.setLength(1.0);
+                        QPointF oDir(oNorm.dx(), oNorm.dy());
 
-                    QLineF oLeft(oAxis.p1() + oOff, oAxis.p2() + oOff);
-                    QLineF oRight(oAxis.p1() - oOff, oAxis.p2() - oOff);
+                        qreal oThick = other->thicknessInMm() * 0.1;
+                        qreal oLeftDist = oThick / 2.0;
+                        qreal oRightDist = oThick / 2.0;
 
-                    QPointF int1, int2;
-                    bool intersect1 = false, intersect2 = false;
-
-                    if (p1_b1 || p1_b2) {
-                        bool sameDir = p1_b1;
-                        if (sameDir) {
-                            intersect1 = (myLeft.intersects(oLeft, &int1) == QLineF::UnboundedIntersection);
-                            intersect2 = (myRight.intersects(oRight, &int2) == QLineF::UnboundedIntersection);
-                        } else {
-                            intersect1 = (myLeft.intersects(oRight, &int1) == QLineF::UnboundedIntersection);
-                            intersect2 = (myRight.intersects(oLeft, &int2) == QLineF::UnboundedIntersection);
+                        if (other->alignment() == 1) {
+                            oLeftDist = 0.0;
+                            oRightDist = oThick;
+                        } else if (other->alignment() == 2) {
+                            oLeftDist = oThick;
+                            oRightDist = 0.0;
                         }
-                        if (intersect1) p1L = int1;
-                        if (intersect2) p1R = int2;
-                    }
 
-                    if (p2_b1 || p2_b2) {
-                        bool sameDir = p2_b2;
-                        if (sameDir) {
-                            intersect1 = (myLeft.intersects(oLeft, &int1) == QLineF::UnboundedIntersection);
-                            intersect2 = (myRight.intersects(oRight, &int2) == QLineF::UnboundedIntersection);
-                        } else {
-                            intersect1 = (myLeft.intersects(oRight, &int1) == QLineF::UnboundedIntersection);
-                            intersect2 = (myRight.intersects(oLeft, &int2) == QLineF::UnboundedIntersection);
+                        QLineF oLeft(oAxis.p1() + oDir * oLeftDist, oAxis.p2() + oDir * oLeftDist);
+                        QLineF oRight(oAxis.p1() - oDir * oRightDist, oAxis.p2() - oDir * oRightDist);
+
+                        QPointF intL, intR;
+                        qreal maxDist = (m_thickness + oThick) * 3.0;
+
+                        if (p1_b1) {
+                            if (myLeft.intersects(oRight, &intL) == QLineF::UnboundedIntersection && QLineF(p1, intL).length() < maxDist) p1L = intL;
+                            if (myRight.intersects(oLeft, &intR) == QLineF::UnboundedIntersection && QLineF(p1, intR).length() < maxDist) p1R = intR;
+                        } else if (p1_b2) {
+                            if (myLeft.intersects(oLeft, &intL) == QLineF::UnboundedIntersection && QLineF(p1, intL).length() < maxDist) p1L = intL;
+                            if (myRight.intersects(oRight, &intR) == QLineF::UnboundedIntersection && QLineF(p1, intR).length() < maxDist) p1R = intR;
+                        } else if (p2_b1) {
+                            if (myLeft.intersects(oLeft, &intL) == QLineF::UnboundedIntersection && QLineF(p2, intL).length() < maxDist) p2L = intL;
+                            if (myRight.intersects(oRight, &intR) == QLineF::UnboundedIntersection && QLineF(p2, intR).length() < maxDist) p2R = intR;
+                        } else if (p2_b2) {
+                            if (myLeft.intersects(oRight, &intL) == QLineF::UnboundedIntersection && QLineF(p2, intL).length() < maxDist) p2L = intL;
+                            if (myRight.intersects(oLeft, &intR) == QLineF::UnboundedIntersection && QLineF(p2, intR).length() < maxDist) p2R = intR;
                         }
-                        if (intersect1) p2L = int1;
-                        if (intersect2) p2R = int2;
                     }
                 }
             }
@@ -364,4 +382,18 @@ qreal WallItem::netArea() const
     }
 
     return qMax(0.0, grossArea - deductions);
+}
+
+int WallItem::alignment() const
+{
+    return m_alignment;
+}
+
+void WallItem::setAlignment(int alignment)
+{
+    if (m_alignment == alignment) return;
+    m_alignment = alignment;
+    updatePolygon();
+    update();
+    emit itemChanged();
 }

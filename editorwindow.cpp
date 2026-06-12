@@ -59,6 +59,9 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->cb_door_swing, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &EditorWindow::onDoorPropertyChanged);
     connect(ui->pb_tool_door, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+
+    connect(ui->cb_wall_alignment, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &EditorWindow::onWallPropertyChanged);
 }
 
 EditorWindow::~EditorWindow()
@@ -135,15 +138,18 @@ void EditorWindow::onSelectionChanged()
             ui->sb_wall_length->blockSignals(true);
             ui->sb_wall_thickness->blockSignals(true);
             ui->sb_wall_angle->blockSignals(true);
+            ui->cb_wall_alignment->blockSignals(true);
 
             ui->sb_wall_length->setValue(wall->lengthInMeters());
             ui->sb_wall_thickness->setValue(wall->thicknessInMm());
             ui->sb_wall_angle->setValue(wall->angleInDegrees());
+            ui->cb_wall_alignment->setCurrentIndex(wall->alignment());
             ui->lbl_wall_area->setText(QString("Чистая площадь: %1 м²").arg(wall->netArea(), 0, 'f', 2));
 
             ui->sb_wall_length->blockSignals(false);
             ui->sb_wall_thickness->blockSignals(false);
             ui->sb_wall_angle->blockSignals(false);
+            ui->cb_wall_alignment->blockSignals(false);
         };
 
         updateUI();
@@ -211,9 +217,15 @@ void EditorWindow::onWallPropertyChanged()
 {
     if (m_trackedItem) {
         if (WallItem *wall = dynamic_cast<WallItem*>(m_trackedItem)) {
-            wall->setLengthInMeters(ui->sb_wall_length->value());
-            wall->setThicknessInMm(ui->sb_wall_thickness->value());
-            wall->setAngleInDegrees(ui->sb_wall_angle->value());
+            double length = ui->sb_wall_length->value();
+            double thickness = ui->sb_wall_thickness->value();
+            double angle = ui->sb_wall_angle->value();
+            int alignment = ui->cb_wall_alignment->currentIndex();
+
+            wall->setLengthInMeters(length);
+            wall->setThicknessInMm(thickness);
+            wall->setAngleInDegrees(angle);
+            wall->setAlignment(alignment);
         }
     }
 }
