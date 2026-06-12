@@ -32,6 +32,8 @@ public:
     void setAngleInDegrees(qreal angleDeg);
     qreal angleInDegrees() const;
 
+    QPainterPath shape() const override;
+
 protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;

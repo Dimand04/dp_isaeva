@@ -4,6 +4,8 @@
 #include <QCursor>
 #include <QtMath>
 #include <QGraphicsScene>
+#include <QPainterPath>
+#include <QPainterPathStroker>
 
 WallItem::WallItem(const QPointF &startPoint, QGraphicsItem *parent)
     : BaseEditorItem(parent), m_thickness(20.0), m_state(WallStateNone)
@@ -192,4 +194,15 @@ qreal WallItem::angleInDegrees() const
     qreal angle = m_line.angle();
     if (angle < 0) angle += 360;
     return angle;
+}
+
+QPainterPath WallItem::shape() const
+{
+    QPainterPath path;
+    path.moveTo(m_line.p1());
+    path.lineTo(m_line.p2());
+
+    QPainterPathStroker stroker;
+    stroker.setWidth(m_thickness + 20);
+    return stroker.createStroke(path);
 }

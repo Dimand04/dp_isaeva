@@ -2,6 +2,7 @@
 #include "ui_editorwindow.h"
 #include "foundationblockitem.h"
 #include "wallitem.h"
+#include "windowitem.h"
 
 EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     QMainWindow(parent),
@@ -34,10 +35,24 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
 
     connect(ui->sb_wall_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
             this, &EditorWindow::onWallPropertyChanged);
+
+    connect(ui->pb_tool_window, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+    connect(ui->sb_window_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &EditorWindow::onWindowPropertyChanged);
+
+    connect(ui->sb_window_elevation, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            this, &EditorWindow::onWindowPropertyChanged);
+
+    connect(ui->cb_window_profile, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &EditorWindow::onWindowPropertyChanged);
 }
 
 EditorWindow::~EditorWindow()
 {
+    if (m_scene) {
+        m_scene->disconnect(this);
+    }
+
     delete ui;
 }
 
@@ -54,6 +69,8 @@ void EditorWindow::onToolButtonClicked()
         m_scene->setToolMode(ModeWall);
     } else if (button == ui->pb_tool_node) {
         m_scene->setToolMode(ModeNode);
+    } else if (button == ui->pb_tool_window) {
+        m_scene->setToolMode(ModeWindow);
     }
 }
 
@@ -113,6 +130,25 @@ void EditorWindow::onSelectionChanged()
 
         updateUI();
         connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
+    } else if (WindowItem *window = dynamic_cast<WindowItem*>(item)) {
+        ui->stackedWidget->setCurrentIndex(3);
+
+        auto updateUI = [this, window]() {
+            ui->sb_window_width->blockSignals(true);
+            ui->sb_window_elevation->blockSignals(true);
+            ui->cb_window_profile->blockSignals(true);
+
+            ui->sb_window_width->setValue(window->widthInMeters());
+            ui->sb_window_elevation->setValue(window->elevation());
+            ui->cb_window_profile->setCurrentIndex(window->profileType());
+
+            ui->sb_window_width->blockSignals(false);
+            ui->sb_window_elevation->blockSignals(false);
+            ui->cb_window_profile->blockSignals(false);
+        };
+
+        updateUI();
+        connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
     }
 }
 
@@ -134,6 +170,17 @@ void EditorWindow::onWallPropertyChanged()
             wall->setLengthInMeters(ui->sb_wall_length->value());
             wall->setThicknessInMm(ui->sb_wall_thickness->value());
             wall->setAngleInDegrees(ui->sb_wall_angle->value());
+        }
+    }
+}
+
+void EditorWindow::onWindowPropertyChanged()
+{
+    if (m_trackedItem) {
+        if (WindowItem *window = dynamic_cast<WindowItem*>(m_trackedItem)) {
+            window->setWidthInMeters(ui->sb_window_width->value());
+            window->setElevation(ui->sb_window_elevation->value());
+            window->setProfileType(ui->cb_window_profile->currentIndex());
         }
     }
 }

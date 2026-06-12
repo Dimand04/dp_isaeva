@@ -4,6 +4,7 @@
 #include <QPen>
 #include "wallitem.h"
 #include <QtMath>
+#include "windowitem.h"
 
 EditorScene::EditorScene(QObject *parent)
     : QGraphicsScene(parent), m_currentMode(ModeCursor), m_isDrawing(false), m_currentWall(nullptr), m_gridSize(20)
@@ -53,6 +54,19 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
             m_currentWall = new WallItem(snappedPos);
             m_currentWall->setPos(snappedPos);
             addItem(m_currentWall);
+            return;
+        } else if (m_currentMode == ModeWindow) {
+            QGraphicsItem *clickedItem = itemAt(event->scenePos(), QTransform());
+
+            if (WallItem *wall = dynamic_cast<WallItem*>(clickedItem)) {
+
+                WindowItem *window = new WindowItem(150, wall);
+                addItem(window);
+
+                window->snapToPos(event->scenePos());
+
+                window->setRotation(-wall->line().angle());
+            }
             return;
         }
     }

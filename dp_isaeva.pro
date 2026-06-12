@@ -28,7 +28,8 @@ SOURCES += \
     roleeditordialog.cpp \
     simpledicteditordialog.cpp \
     usereditordialog.cpp \
-    wallitem.cpp
+    wallitem.cpp \
+    windowitem.cpp
 
 HEADERS += \
     authwidget.h \
@@ -49,7 +50,8 @@ HEADERS += \
     roleeditordialog.h \
     simpledicteditordialog.h \
     usereditordialog.h \
-    wallitem.h
+    wallitem.h \
+    windowitem.h
 
 FORMS += \
     authwidget.ui \
