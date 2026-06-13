@@ -20,6 +20,9 @@ public:
     explicit EditorScene(QObject *parent = nullptr);
     void setToolMode(ToolMode mode);
 
+signals:
+    void cursorMoved(const QPointF &scenePos);
+
 protected:
     void drawBackground(QPainter *painter, const QRectF &rect) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;

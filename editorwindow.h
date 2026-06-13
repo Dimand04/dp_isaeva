@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "editorscene.h"
 #include "baseeditoritem.h"
+#include <QLabel>
 
 namespace Ui {
 class EditorWindow;
@@ -30,6 +31,7 @@ private:
     int m_projectId;
     EditorScene *m_scene;
     BaseEditorItem *m_trackedItem = nullptr;
+    QLabel *m_coordLabel;
 };
 
 #endif

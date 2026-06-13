@@ -85,6 +85,8 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 
 void EditorScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
+    emit cursorMoved(event->scenePos());
+
     if (m_isDrawing && m_currentWall && m_currentMode == ModeWall) {
         QPointF snappedPos = snapToGrid(event->scenePos());
 

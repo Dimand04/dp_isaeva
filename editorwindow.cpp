@@ -62,6 +62,16 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
 
     connect(ui->cb_wall_alignment, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &EditorWindow::onWallPropertyChanged);
+
+    m_coordLabel = new QLabel("Клетка X: 0 | Y: 0", this);
+    ui->statusBar->addPermanentWidget(m_coordLabel);
+
+    connect(m_scene, &EditorScene::cursorMoved, this, [this](const QPointF &pos) {
+        int cellX = qFloor(pos.x() / 20.0);
+        int cellY = qFloor(pos.y() / 20.0);
+
+        m_coordLabel->setText(QString("Клетка X: %1 | Y: %2").arg(cellX).arg(cellY));
+    });
 }
 
 EditorWindow::~EditorWindow()

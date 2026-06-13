@@ -11,6 +11,7 @@ EditorView::EditorView(QWidget *parent)
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setDragMode(QGraphicsView::NoDrag);
+    setMouseTracking(true);
 }
 
 void EditorView::wheelEvent(QWheelEvent *event)

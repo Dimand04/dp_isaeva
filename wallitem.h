@@ -49,6 +49,8 @@ public:
 
     qreal netArea() const;
 
+    qreal actualLength() const;
+
 protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
