@@ -6,12 +6,10 @@
 #include <QPolygonF>
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
-#include <QSet>
 
 enum WallAlignment {
-    AlignCenter = 0,
-    AlignLeft = 1,
-    AlignRight = 2
+    AlignLeft = 0,
+    AlignRight = 1
 };
 
 enum WallInteractionState {
@@ -49,8 +47,6 @@ public:
 
     qreal netArea() const;
 
-    qreal actualLength() const;
-
 protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
@@ -64,12 +60,12 @@ private:
     QPolygonF m_polygon;
     bool m_isUpdating;
     WallInteractionState m_state;
-    int m_alignment = 0;
-
-    QSet<WallItem*> m_connectedWalls;
+    int m_alignment = AlignLeft;
 
     QRectF startHandle() const;
     QRectF endHandle() const;
+
+    void updateAttachedItems();
 };
 
 #endif

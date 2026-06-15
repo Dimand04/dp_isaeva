@@ -1,33 +1,48 @@
 #include "baseeditoritem.h"
+#include <QGraphicsScene>
+#include <QtMath>
 
 BaseEditorItem::BaseEditorItem(QGraphicsItem *parent)
     : QGraphicsObject(parent)
 {
-    m_id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-
-    setFlags(QGraphicsItem::ItemIsSelectable |
-             QGraphicsItem::ItemIsMovable |
-             QGraphicsItem::ItemSendsGeometryChanges);
+    setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemSendsGeometryChanges);
 }
 
-BaseEditorItem::~BaseEditorItem()
+QPointF BaseEditorItem::snapPosition(const QPointF &pos) const
 {
+    int gridSize = 5;
+    qreal x = qRound(pos.x() / gridSize) * gridSize;
+    qreal y = qRound(pos.y() / gridSize) * gridSize;
+    return QPointF(x, y);
 }
 
 QVariant BaseEditorItem::itemChange(GraphicsItemChange change, const QVariant &value)
 {
-    if (change == ItemSelectedHasChanged) {
-        update();
+    if (change == ItemPositionChange && scene()) {
+        return snapPosition(value.toPointF());
     }
-    else if (change == ItemPositionChange && scene()) {
-        QPointF newPos = value.toPointF();
-        int gridSize = 20;
-
-        qreal x = qRound(newPos.x() / gridSize) * gridSize;
-        qreal y = qRound(newPos.y() / gridSize) * gridSize;
-
-        return QPointF(x, y);
+    if (change == ItemPositionHasChanged || change == ItemTransformHasChanged) {
+        emit itemChanged();
     }
-
     return QGraphicsObject::itemChange(change, value);
+}
+
+void BaseEditorItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        setFlag(QGraphicsItem::ItemIsMovable, isSelected());
+    }
+    QGraphicsObject::mousePressEvent(event);
+}
+
+void BaseEditorItem::setName(const QString &name)
+{
+    if (m_name == name) return;
+    m_name = name;
+    emit itemChanged();
+}
+
+QString BaseEditorItem::name() const
+{
+    return m_name;
 }

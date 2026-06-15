@@ -8,6 +8,7 @@
 #include <QPainterPathStroker>
 #include "windowitem.h"
 #include "dooritem.h"
+#include <QPainter>
 
 WallItem::WallItem(const QPointF &startPoint, QGraphicsItem *parent)
     : BaseEditorItem(parent), m_thickness(20.0), m_isUpdating(false), m_state(WallStateNone)
@@ -231,187 +232,29 @@ void WallItem::updatePolygon()
     normal.setLength(1.0);
     QPointF dir(normal.dx(), normal.dy());
 
-    qreal leftDist = m_thickness / 2.0;
-    qreal rightDist = m_thickness / 2.0;
-    if (m_alignment == 1) { leftDist = 0.0; rightDist = m_thickness; }
-    else if (m_alignment == 2) { leftDist = m_thickness; rightDist = 0.0; }
+    qreal leftDist = 0.0;
+    qreal rightDist = 0.0;
 
-    // Базовые (исходные) координаты прямоугольника до любых подрезок
-    QPointF p1L_orig = p1 + dir * leftDist;
-    QPointF p1R_orig = p1 - dir * rightDist;
-    QPointF p2L_orig = p2 + dir * leftDist;
-    QPointF p2R_orig = p2 - dir * rightDist;
-
-    QPointF p1L = p1L_orig;
-    QPointF p1R = p1R_orig;
-    QPointF p2L = p2L_orig;
-    QPointF p2R = p2R_orig;
-
-    QPolygonF myBasePoly;
-    myBasePoly << p1L_orig << p2L_orig << p2R_orig << p1R_orig;
-    QPolygonF myBaseScene = mapToScene(myBasePoly);
-
-    QSet<WallItem*> currentlyTouching;
-
-    if (scene()) {
-        QLineF myAxisScene(mapToScene(p1), mapToScene(p2));
-
-        // Лямбда для поиска идеальной точки среза на углах
-        auto getMiterPoint = [](QLineF myEdge, QLineF oEdge1, QLineF oEdge2, QPointF origPt) -> QPointF {
-            QPointF i1, i2;
-            bool b1 = myEdge.intersects(oEdge1, &i1) == QLineF::UnboundedIntersection;
-            bool b2 = myEdge.intersects(oEdge2, &i2) == QLineF::UnboundedIntersection;
-            if (!b1 && !b2) return origPt;
-            if (b1 && !b2) return i1;
-            if (!b1 && b2) return i2;
-            return (QLineF(origPt, i1).length() < QLineF(origPt, i2).length()) ? i1 : i2;
-        };
-
-        for (QGraphicsItem* item : scene()->items()) {
-            if (item == this) continue;
-            WallItem* other = dynamic_cast<WallItem*>(item);
-            if (!other) continue;
-
-            QLineF oAxis = other->line();
-            QLineF oNormal = oAxis.normalVector();
-            if (oNormal.length() == 0) continue;
-            oNormal.setLength(1.0);
-            QPointF oDir(oNormal.dx(), oNormal.dy());
-
-            qreal oThick = other->thicknessInMm() * 0.1;
-            qreal oLeftDist = oThick / 2.0;
-            qreal oRightDist = oThick / 2.0;
-            if (other->alignment() == 1) { oLeftDist = 0.0; oRightDist = oThick; }
-            else if (other->alignment() == 2) { oLeftDist = oThick; oRightDist = 0.0; }
-
-            QLineF oLeft(oAxis.p1() + oDir * oLeftDist, oAxis.p2() + oDir * oLeftDist);
-            QLineF oRight(oAxis.p1() - oDir * oRightDist, oAxis.p2() - oDir * oRightDist);
-
-            QPolygonF oBasePoly;
-            oBasePoly << oLeft.p1() << oLeft.p2() << oRight.p2() << oRight.p1();
-            QPolygonF oBaseScene = other->mapToScene(oBasePoly);
-
-            // 1. Если физически не касаются друг друга — игнорируем
-            if (myBaseScene.intersected(oBaseScene).isEmpty()) continue;
-
-            // 2. Ищем пересечение осей
-            QLineF oAxisScene(other->mapToScene(oAxis.p1()), other->mapToScene(oAxis.p2()));
-            QPointF axisInt;
-            if (myAxisScene.intersects(oAxisScene, &axisInt) == QLineF::NoIntersection) continue;
-
-            currentlyTouching.insert(other);
-
-            QPointF sp1 = myAxisScene.p1();
-            QPointF sp2 = myAxisScene.p2();
-            QPointF osp1 = oAxisScene.p1();
-            QPointF osp2 = oAxisScene.p2();
-
-            qreal distToSp1 = QLineF(sp1, axisInt).length();
-            qreal distToSp2 = QLineF(sp2, axisInt).length();
-            qreal distToOsp1 = QLineF(osp1, axisInt).length();
-            qreal distToOsp2 = QLineF(osp2, axisInt).length();
-
-            // Допуски для определения конца стены
-            qreal threshThis = m_thickness * 3.0;
-            qreal threshOther = oThick * 3.0;
-
-            bool thisEnd1 = distToSp1 <= threshThis && distToSp1 <= distToSp2;
-            bool thisEnd2 = distToSp2 <= threshThis && distToSp2 < distToSp1;
-            bool otherIsEnd = distToOsp1 <= threshOther || distToOsp2 <= threshOther;
-
-            QLineF mLeftScene(mapToScene(p1L_orig), mapToScene(p2L_orig));
-            QLineF mRightScene(mapToScene(p1R_orig), mapToScene(p2R_orig));
-            QLineF oLeftScene(other->mapToScene(oLeft.p1()), other->mapToScene(oLeft.p2()));
-            QLineF oRightScene(other->mapToScene(oRight.p1()), other->mapToScene(oRight.p2()));
-
-            // Обработка стыка на точке P1
-            if (thisEnd1) {
-                if (otherIsEnd) {
-                    // Это УГОЛ
-                    p1L = mapFromScene(getMiterPoint(mLeftScene, oLeftScene, oRightScene, mapToScene(p1L_orig)));
-                    p1R = mapFromScene(getMiterPoint(mRightScene, oLeftScene, oRightScene, mapToScene(p1R_orig)));
-                } else {
-                    // Это Т-СТЫК (мы упираемся в чужую стену плоско)
-                    QPointF iL, iR;
-                    bool bL = myAxisScene.intersects(oLeftScene, &iL) == QLineF::UnboundedIntersection;
-                    bool bR = myAxisScene.intersects(oRightScene, &iR) == QLineF::UnboundedIntersection;
-
-                    // Находим ближайшую к нам грань другой стены
-                    QLineF targetEdge = (bL && bR && QLineF(sp1, iL).length() < QLineF(sp1, iR).length()) ? oLeftScene : oRightScene;
-                    if (!bL && bR) targetEdge = oRightScene;
-                    if (bL && !bR) targetEdge = oLeftScene;
-
-                    // Обрезаем ОБЕ наши грани строго по этой одной линии
-                    if (!targetEdge.isNull()) {
-                        QPointF tempL, tempR;
-                        if (mLeftScene.intersects(targetEdge, &tempL) == QLineF::UnboundedIntersection) p1L = mapFromScene(tempL);
-                        if (mRightScene.intersects(targetEdge, &tempR) == QLineF::UnboundedIntersection) p1R = mapFromScene(tempR);
-                    }
-                }
-            }
-
-            // Обработка стыка на точке P2
-            if (thisEnd2) {
-                if (otherIsEnd) {
-                    // Это УГОЛ
-                    p2L = mapFromScene(getMiterPoint(mLeftScene, oLeftScene, oRightScene, mapToScene(p2L_orig)));
-                    p2R = mapFromScene(getMiterPoint(mRightScene, oLeftScene, oRightScene, mapToScene(p2R_orig)));
-                } else {
-                    // Это Т-СТЫК
-                    QPointF iL, iR;
-                    bool bL = myAxisScene.intersects(oLeftScene, &iL) == QLineF::UnboundedIntersection;
-                    bool bR = myAxisScene.intersects(oRightScene, &iR) == QLineF::UnboundedIntersection;
-
-                    QLineF targetEdge = (bL && bR && QLineF(sp2, iL).length() < QLineF(sp2, iR).length()) ? oLeftScene : oRightScene;
-                    if (!bL && bR) targetEdge = oRightScene;
-                    if (bL && !bR) targetEdge = oLeftScene;
-
-                    if (!targetEdge.isNull()) {
-                        QPointF tempL, tempR;
-                        if (mLeftScene.intersects(targetEdge, &tempL) == QLineF::UnboundedIntersection) p2L = mapFromScene(tempL);
-                        if (mRightScene.intersects(targetEdge, &tempR) == QLineF::UnboundedIntersection) p2R = mapFromScene(tempR);
-                    }
-                }
-            }
-        }
+    if (m_alignment == AlignLeft) {
+        leftDist = 0.0;
+        rightDist = m_thickness;
+    } else {
+        leftDist = m_thickness;
+        rightDist = 0.0;
     }
 
-    // Защита от перекручивания (Anti-Bowtie)
-    auto checkCross = [](QPointF oL, QPointF oR, QPointF nL, QPointF nR) {
-        QLineF origLine(oL, oR);
-        QLineF newLine(nL, nR);
-        qreal angle = qAbs(origLine.angleTo(newLine));
-        return (angle > 90.0 && angle < 270.0);
-    };
-    if (checkCross(p1L_orig, p1R_orig, p1L, p1R)) { p1L = p1L_orig; p1R = p1R_orig; }
-    if (checkCross(p2L_orig, p2R_orig, p2L, p2R)) { p2L = p2L_orig; p2R = p2R_orig; }
+    QPointF p1L = p1 + dir * leftDist;
+    QPointF p1R = p1 - dir * rightDist;
+    QPointF p2L = p2 + dir * leftDist;
+    QPointF p2R = p2 - dir * rightDist;
 
-    // Сборка финального полигона
-    if (m_polygon.isEmpty() || m_polygon[0] != p1L || m_polygon[1] != p2L || m_polygon[2] != p2R || m_polygon[3] != p1R) {
-        prepareGeometryChange();
-        m_polygon.clear();
-        m_polygon << p1L << p2L << p2R << p1R;
-    }
-
-    // Автоматическое обновление соседей
-    QSet<WallItem*> detachedWalls = m_connectedWalls;
-    detachedWalls.subtract(currentlyTouching);
-    m_connectedWalls = currentlyTouching;
-
-    for (WallItem* detached : detachedWalls) {
-        if (detached->scene() == scene()) {
-            detached->updatePolygon();
-            detached->update();
-        }
-    }
-    for (WallItem* attached : currentlyTouching) {
-        if (attached->scene() == scene()) {
-            attached->updatePolygon();
-            attached->update();
-        }
-    }
+    prepareGeometryChange();
+    m_polygon.clear();
+    m_polygon << p1L << p2L << p2R << p1R;
 
     m_isUpdating = false;
+
+    updateAttachedItems();
 }
 
 qreal WallItem::calculateExactArea() const
@@ -461,11 +304,19 @@ void WallItem::setAlignment(int alignment)
     emit itemChanged();
 }
 
-qreal WallItem::actualLength() const
+void WallItem::updateAttachedItems()
 {
-    qreal thickM = thicknessInMm() / 1000.0;
-    if (thickM <= 0) return lengthInMeters();
+    if (!scene()) return;
 
-    qreal grossArea = calculateExactArea();
-    return grossArea / thickM;
+    for (QGraphicsItem *item : scene()->items()) {
+        if (WindowItem *w = dynamic_cast<WindowItem*>(item)) {
+            if (w->hostWall() == this) {
+                w->updateGeometryToWall();
+            }
+        } else if (DoorItem *d = dynamic_cast<DoorItem*>(item)) {
+            if (d->hostWall() == this) {
+                d->updateGeometryToWall();
+            }
+        }
+    }
 }

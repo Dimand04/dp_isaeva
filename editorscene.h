@@ -3,6 +3,8 @@
 
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
+#include <QGraphicsSceneContextMenuEvent>
+#include <QKeyEvent>
 
 enum ToolMode {
     ModeCursor,
@@ -10,7 +12,8 @@ enum ToolMode {
     ModeWall,
     ModeNode,
     ModeWindow,
-    ModeDoor
+    ModeDoor,
+    ModeFloor
 };
 
 class EditorScene : public QGraphicsScene
@@ -19,6 +22,10 @@ class EditorScene : public QGraphicsScene
 public:
     explicit EditorScene(QObject *parent = nullptr);
     void setToolMode(ToolMode mode);
+    int toolMode() const;
+    void deleteSelectedItems();
+    void setWorkspaceSize(qreal widthMeters, qreal heightMeters);
+    QSizeF workspaceSize() const;
 
 signals:
     void cursorMoved(const QPointF &scenePos);
@@ -28,11 +35,14 @@ protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+    void contextMenuEvent(QGraphicsSceneContextMenuEvent *event) override;
 
 private:
     ToolMode m_currentMode;
     bool m_isDrawing;
     class WallItem *m_currentWall;
+    class FloorItem *m_currentFloor;
     int m_gridSize;
     QPointF snapToGrid(const QPointF &pos);
 };

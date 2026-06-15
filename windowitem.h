@@ -2,7 +2,7 @@
 #define WINDOWITEM_H
 
 #include "baseeditoritem.h"
-#include <QGraphicsSceneMouseEvent>
+#include <QPainterPath>
 
 class WallItem;
 
@@ -10,46 +10,41 @@ class WindowItem : public BaseEditorItem
 {
     Q_OBJECT
 public:
-    explicit WindowItem(qreal width, WallItem *hostWall, QGraphicsItem *parent = nullptr);
+    explicit WindowItem(QGraphicsItem *parent = nullptr);
 
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
-    void setWidthInMeters(qreal widthMeters);
-    void setElevation(qreal elevation);
-    void setProfileType(int index);
+    void setHostWall(WallItem *wall);
+    WallItem* hostWall() const;
+    void updateGeometryToWall();
 
+    void setWidthInMeters(qreal w);
     qreal widthInMeters() const;
+
+    void setElevation(qreal e);
     qreal elevation() const;
+
+    void setProfileType(int type);
     int profileType() const;
 
-    qreal distanceFromStart() const;
     void setDistanceFromStart(qreal distanceMeters);
-
-    void snapToPos(const QPointF &scenePt);
-
-    WallItem* hostWall() const { return m_hostWall; }
+    qreal distanceFromStart() const;
 
     qreal area() const;
 
-public slots:
-    void updateGeometryToWall();
-
 protected:
-    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    QPointF snapPosition(const QPointF &pos) const override;
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 
 private:
+    WallItem *m_hostWall;
     qreal m_width;
     qreal m_depth;
-    qreal m_elevation = 0.8;
-    int m_profileType = 0;
+    qreal m_elevation;
+    int m_profileType;
     qreal m_distance;
-
-    WallItem *m_hostWall;
-    bool m_isDragging;
 };
 
-#endif
+#endif // WINDOWITEM_H

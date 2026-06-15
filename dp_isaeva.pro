@@ -18,10 +18,12 @@ SOURCES += \
     editorview.cpp \
     editorwindow.cpp \
     filestoragemanager.cpp \
+    flooritem.cpp \
     foundationblockitem.cpp \
     main.cpp \
     mainwidget.cpp \
     materialeditordialog.cpp \
+    nodeitem.cpp \
     paymentdialog.cpp \
     projecteditordialog.cpp \
     projectestimatedialog.cpp \
@@ -42,9 +44,11 @@ HEADERS += \
     editorview.h \
     editorwindow.h \
     filestoragemanager.h \
+    flooritem.h \
     foundationblockitem.h \
     mainwidget.h \
     materialeditordialog.h \
+    nodeitem.h \
     paymentdialog.h \
     projecteditordialog.h \
     projectestimatedialog.h \

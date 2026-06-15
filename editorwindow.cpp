@@ -4,6 +4,7 @@
 #include "wallitem.h"
 #include "windowitem.h"
 #include "dooritem.h"
+#include "nodeitem.h"
 
 EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     QMainWindow(parent),
@@ -22,22 +23,29 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
 
     ui->stackedWidget->setCurrentIndex(0);
 
+    ui->le_object_name->setVisible(false);
+
     connect(ui->pb_tool_cursor, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
     connect(ui->pb_tool_foundation, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
     connect(ui->pb_tool_wall, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
     connect(ui->pb_tool_node, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+    connect(ui->pb_tool_window, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+    connect(ui->pb_tool_door, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+    connect(ui->pb_tool_floor, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+
     connect(m_scene, &QGraphicsScene::selectionChanged, this, &EditorWindow::onSelectionChanged);
+
     connect(ui->sb_found_width, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onFoundationPropertyChanged);
     connect(ui->sb_found_height, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onFoundationPropertyChanged);
     connect(ui->sb_wall_length, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onWallPropertyChanged);
     connect(ui->sb_wall_thickness, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onWallPropertyChanged);
+
     connect(ui->sb_found_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
             this, &EditorWindow::onFoundationPropertyChanged);
 
     connect(ui->sb_wall_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
             this, &EditorWindow::onWallPropertyChanged);
 
-    connect(ui->pb_tool_window, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
     connect(ui->sb_window_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
             this, &EditorWindow::onWindowPropertyChanged);
 
@@ -58,7 +66,6 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
 
     connect(ui->cb_door_swing, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &EditorWindow::onDoorPropertyChanged);
-    connect(ui->pb_tool_door, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
 
     connect(ui->cb_wall_alignment, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &EditorWindow::onWallPropertyChanged);
@@ -71,6 +78,25 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
         int cellY = qFloor(pos.y() / 20.0);
 
         m_coordLabel->setText(QString("Клетка X: %1 | Y: %2").arg(cellX).arg(cellY));
+    });
+
+    connect(ui->sb_node_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
+    connect(ui->sb_node_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
+    connect(ui->sb_node_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
+    connect(ui->cb_node_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onNodePropertyChanged);
+
+    connect(ui->le_object_name, &QLineEdit::textEdited, this, [this](const QString &text) {
+        if (m_trackedItem) {
+            m_trackedItem->setName(text);
+        }
+    });
+
+    connect(ui->sb_workspace_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
+        m_scene->setWorkspaceSize(val, ui->sb_workspace_height->value());
+    });
+
+    connect(ui->sb_workspace_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
+        m_scene->setWorkspaceSize(ui->sb_workspace_width->value(), val);
     });
 }
 
@@ -100,6 +126,8 @@ void EditorWindow::onToolButtonClicked()
         m_scene->setToolMode(ModeWindow);
     } else if (button == ui->pb_tool_door) {
         m_scene->setToolMode(ModeDoor);
+    } else if (button == ui->pb_tool_floor) {
+        m_scene->setToolMode(ModeFloor);
     }
 }
 
@@ -114,11 +142,30 @@ void EditorWindow::onSelectionChanged()
 
     if (selected.isEmpty() || selected.size() > 1) {
         ui->stackedWidget->setCurrentIndex(0);
+        ui->le_object_name->clear();
+        ui->le_object_name->setEnabled(false);
+        ui->le_object_name->setVisible(false);
+
+        ui->sb_workspace_width->blockSignals(true);
+        ui->sb_workspace_height->blockSignals(true);
+        ui->sb_workspace_width->setValue(m_scene->workspaceSize().width());
+        ui->sb_workspace_height->setValue(m_scene->workspaceSize().height());
+        ui->sb_workspace_width->blockSignals(false);
+        ui->sb_workspace_height->blockSignals(false);
+
         return;
     }
 
     QGraphicsItem *item = selected.first();
     m_trackedItem = dynamic_cast<BaseEditorItem*>(item);
+
+    if (m_trackedItem) {
+        ui->le_object_name->setVisible(true);
+        ui->le_object_name->setEnabled(true);
+        ui->le_object_name->blockSignals(true);
+        ui->le_object_name->setText(m_trackedItem->name());
+        ui->le_object_name->blockSignals(false);
+    }
 
     if (FoundationBlockItem *block = dynamic_cast<FoundationBlockItem*>(item)) {
         ui->stackedWidget->setCurrentIndex(1);
@@ -210,6 +257,30 @@ void EditorWindow::onSelectionChanged()
         updateUI();
         connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
     }
+    else if (NodeItem *node = dynamic_cast<NodeItem*>(item)) {
+        ui->stackedWidget->setCurrentIndex(5);
+
+        auto updateUI = [this, node]() {
+            ui->sb_node_width->blockSignals(true);
+            ui->sb_node_height->blockSignals(true);
+            ui->sb_node_angle->blockSignals(true);
+            ui->cb_node_type->blockSignals(true);
+
+            ui->sb_node_width->setValue(node->side1InMeters());
+            ui->sb_node_height->setValue(node->side2InMeters());
+            ui->sb_node_angle->setValue(node->rotationAngle());
+            ui->cb_node_type->setCurrentIndex(node->isRounded());
+            ui->lbl_node_area->setText(QString("Площадь: %1 м²").arg(node->area(), 0, 'f', 4));
+
+            ui->sb_node_width->blockSignals(false);
+            ui->sb_node_height->blockSignals(false);
+            ui->sb_node_angle->blockSignals(false);
+            ui->cb_node_type->blockSignals(false);
+        };
+
+        updateUI();
+        connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
+    }
 }
 
 void EditorWindow::onFoundationPropertyChanged()
@@ -268,6 +339,18 @@ void EditorWindow::onDoorPropertyChanged()
             door->setWidthInMeters(width);
             door->setDistanceFromStart(distance);
             door->setSwingType(swingType);
+        }
+    }
+}
+
+void EditorWindow::onNodePropertyChanged()
+{
+    if (m_trackedItem) {
+        if (NodeItem *node = dynamic_cast<NodeItem*>(m_trackedItem)) {
+            node->setSide1InMeters(ui->sb_node_width->value());
+            node->setSide2InMeters(ui->sb_node_height->value());
+            node->setRotationAngle(ui->sb_node_angle->value());
+            node->setRounded(ui->cb_node_type->currentIndex());
         }
     }
 }

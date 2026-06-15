@@ -1,27 +1,44 @@
 #include "windowitem.h"
 #include "wallitem.h"
 #include "dooritem.h"
+#include <QPainter>
 #include <QPen>
 #include <QBrush>
-#include <QCursor>
 #include <QtMath>
 #include <QGraphicsScene>
 
-WindowItem::WindowItem(qreal width, WallItem *hostWall, QGraphicsItem *parent)
-    : BaseEditorItem(parent), m_width(width), m_hostWall(hostWall), m_isDragging(false), m_distance(0.0)
+WindowItem::WindowItem(QGraphicsItem *parent)
+    : BaseEditorItem(parent), m_hostWall(nullptr), m_width(100.0), m_depth(20.0),
+    m_elevation(0.8), m_profileType(0), m_distance(0.0)
 {
     setZValue(1.0);
-    if (m_hostWall) {
-        m_depth = m_hostWall->thicknessInMm() * 0.1;
-        connect(m_hostWall, &BaseEditorItem::itemChanged, this, &WindowItem::updateGeometryToWall);
-    } else {
-        m_depth = 20.0;
-    }
+}
+
+void WindowItem::setHostWall(WallItem *wall)
+{
+    m_hostWall = wall;
+    updateGeometryToWall();
+}
+
+WallItem* WindowItem::hostWall() const
+{
+    return m_hostWall;
 }
 
 QRectF WindowItem::boundingRect() const
 {
-    return QRectF(-m_width / 2, -m_depth / 2, m_width, m_depth).adjusted(-2, -2, 2, 2);
+    qreal halfW = m_width / 2.0;
+    qreal halfD = m_depth / 2.0;
+    return QRectF(-halfW - 5, -halfD - 5, m_width + 10, m_depth + 10);
+}
+
+QPainterPath WindowItem::shape() const
+{
+    QPainterPath path;
+    qreal halfW = m_width / 2.0;
+    qreal halfD = m_depth / 2.0;
+    path.addRect(-halfW, -halfD, m_width, m_depth);
+    return path;
 }
 
 void WindowItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -29,140 +46,90 @@ void WindowItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
-    painter->setBrush(Qt::white);
-    painter->setPen(Qt::NoPen);
-    QRectF rect(-m_width / 2, -m_depth / 2, m_width, m_depth);
-    painter->drawRect(rect);
+    qreal halfW = m_width / 2.0;
+    qreal halfD = m_depth / 2.0;
 
-    painter->setPen(QPen(QColor(50, 50, 50), 1));
-    painter->drawLine(-m_width / 2, -m_depth / 2, -m_width / 2, m_depth / 2);
-    painter->drawLine(m_width / 2, -m_depth / 2, m_width / 2, m_depth / 2);
+    painter->setBrush(QColor(220, 240, 255, 200));
+    painter->setPen(QPen(QColor(50, 50, 50), 2));
+    painter->drawRect(QRectF(-halfW, -halfD, m_width, m_depth));
 
-    painter->drawLine(-m_width / 2, -2, m_width / 2, -2);
-    painter->drawLine(-m_width / 2, 2, m_width / 2, 2);
+    painter->drawLine(QPointF(-halfW, 0), QPointF(halfW, 0));
 
     if (isSelected()) {
         painter->setBrush(Qt::NoBrush);
         painter->setPen(QPen(QColor(21, 101, 192), 2, Qt::DashLine));
-        painter->drawRect(rect);
+        painter->drawRect(boundingRect().adjusted(2, 2, -2, -2));
     }
 }
 
-void WindowItem::setWidthInMeters(qreal widthMeters)
+void WindowItem::setWidthInMeters(qreal w)
 {
-    qreal newWidth = widthMeters * 100.0;
-    if (qAbs(m_width - newWidth) < 1e-5) return;
-
+    if (qAbs((m_width / 100.0) - w) < 1e-5) return;
     prepareGeometryChange();
-    m_width = newWidth;
-    snapToPos(pos());
+    m_width = w * 100.0;
+    updateGeometryToWall();
     update();
     emit itemChanged();
 }
 
-void WindowItem::setElevation(qreal elevation)
+qreal WindowItem::widthInMeters() const { return m_width / 100.0; }
+
+void WindowItem::setElevation(qreal e)
 {
-    if (qAbs(m_elevation - elevation) < 1e-5) return;
-    m_elevation = elevation;
+    if (qAbs(m_elevation - e) < 1e-5) return;
+    m_elevation = e;
     emit itemChanged();
 }
 
-void WindowItem::setProfileType(int index)
+qreal WindowItem::elevation() const { return m_elevation; }
+
+void WindowItem::setProfileType(int type)
 {
-    if (m_profileType == index) return;
-    m_profileType = index;
+    if (m_profileType == type) return;
+    m_profileType = type;
     emit itemChanged();
 }
 
-qreal WindowItem::widthInMeters() const
+int WindowItem::profileType() const { return m_profileType; }
+
+qreal WindowItem::distanceFromStart() const { return m_distance; }
+
+qreal WindowItem::area() const
 {
-    return m_width / 100.0;
+    if (m_hostWall) {
+        return widthInMeters() * (m_hostWall->thicknessInMm() / 1000.0);
+    }
+    return 0.0;
 }
 
-qreal WindowItem::elevation() const
+QPointF WindowItem::snapPosition(const QPointF &pos) const
 {
-    return m_elevation;
-}
-
-int WindowItem::profileType() const
-{
-    return m_profileType;
-}
-
-qreal WindowItem::distanceFromStart() const
-{
-    return m_distance;
-}
-
-void WindowItem::setDistanceFromStart(qreal distanceMeters)
-{
-    if (qAbs(m_distance - distanceMeters) < 1e-5) return;
-    if (!m_hostWall) return;
+    if (!m_hostWall) return pos;
 
     QPointF p1 = m_hostWall->mapToScene(m_hostWall->line().p1());
     QPointF p2 = m_hostWall->mapToScene(m_hostWall->line().p2());
 
-    qreal dx = p2.x() - p1.x();
-    qreal dy = p2.y() - p1.y();
-    qreal lengthPx = qSqrt(dx * dx + dy * dy);
+    QLineF wallLineScene(p1, p2);
+    QLineF normal = wallLineScene.normalVector();
+    if (normal.length() == 0) return pos;
+    normal.setLength(1.0);
+    QPointF dir(normal.dx(), normal.dy());
 
-    if (lengthPx > 0) {
-        qreal targetPx = (distanceMeters * 100.0) + (m_width / 2.0);
-        qreal t = targetPx / lengthPx;
+    qreal thickPx = m_hostWall->thicknessInMm() * 0.1;
+    QPointF offset(0, 0);
+    if (m_hostWall->alignment() == 0) offset = -dir * (thickPx / 2.0);
+    else offset = dir * (thickPx / 2.0);
 
-        QPointF targetPt(p1.x() + t * dx, p1.y() + t * dy);
-        snapToPos(targetPt);
-    }
-}
+    QPointF p1_offset = p1 + offset;
+    QPointF p2_offset = p2 + offset;
 
-void WindowItem::updateGeometryToWall()
-{
-    if (!m_hostWall) return;
-
-    qreal newDepth = m_hostWall->thicknessInMm() * 0.1;
-    if (qAbs(m_depth - newDepth) > 1e-5) {
-        prepareGeometryChange();
-        m_depth = newDepth;
-    }
-
-    setRotation(-m_hostWall->line().angle());
-
-    QPointF p1 = m_hostWall->mapToScene(m_hostWall->line().p1());
-    QPointF p2 = m_hostWall->mapToScene(m_hostWall->line().p2());
-    qreal dx = p2.x() - p1.x();
-    qreal dy = p2.y() - p1.y();
-    qreal lengthPx = qSqrt(dx * dx + dy * dy);
-
-    if (lengthPx > 0) {
-        qreal targetPx = (m_distance * 100.0) + (m_width / 2.0);
-        qreal t = targetPx / lengthPx;
-        QPointF targetPt(p1.x() + t * dx, p1.y() + t * dy);
-        snapToPos(targetPt);
-    }
-}
-
-QVariant WindowItem::itemChange(GraphicsItemChange change, const QVariant &value)
-{
-    if (change == ItemSelectedHasChanged) {
-        update();
-    }
-    return QGraphicsObject::itemChange(change, value);
-}
-
-void WindowItem::snapToPos(const QPointF &pt)
-{
-    if (!m_hostWall) return;
-
-    QPointF p1 = m_hostWall->mapToScene(m_hostWall->line().p1());
-    QPointF p2 = m_hostWall->mapToScene(m_hostWall->line().p2());
-
-    qreal dx = p2.x() - p1.x();
-    qreal dy = p2.y() - p1.y();
+    qreal dx = p2_offset.x() - p1_offset.x();
+    qreal dy = p2_offset.y() - p1_offset.y();
     qreal length2 = dx * dx + dy * dy;
 
     if (length2 > 0) {
         qreal wallLengthPx = qSqrt(length2);
-        qreal t = ((pt.x() - p1.x()) * dx + (pt.y() - p1.y()) * dy) / length2;
+        qreal t = ((pos.x() - p1_offset.x()) * dx + (pos.y() - p1_offset.y()) * dy) / length2;
         qreal proposedCenterPx = t * wallLengthPx;
         qreal halfW = m_width / 2.0;
 
@@ -174,8 +141,7 @@ void WindowItem::snapToPos(const QPointF &pt)
 
         bool valid = true;
         if (scene()) {
-            QList<QGraphicsItem*> items = scene()->items();
-            for (QGraphicsItem *item : items) {
+            for (QGraphicsItem *item : scene()->items()) {
                 if (item == this) continue;
 
                 qreal obsCenterPx = -1;
@@ -198,23 +164,17 @@ void WindowItem::snapToPos(const QPointF &pt)
                     qreal minAllowed = halfW + obsHalfW;
 
                     if (distBetween < minAllowed) {
-                        if (proposedCenterPx < obsCenterPx) {
-                            proposedCenterPx = obsCenterPx - minAllowed;
-                        } else {
-                            proposedCenterPx = obsCenterPx + minAllowed;
-                        }
+                        if (proposedCenterPx < obsCenterPx) proposedCenterPx = obsCenterPx - minAllowed;
+                        else proposedCenterPx = obsCenterPx + minAllowed;
                     }
                 }
             }
 
-            if (proposedCenterPx < halfW - 0.1 || proposedCenterPx > wallLengthPx - halfW + 0.1) {
-                valid = false;
-            }
+            if (proposedCenterPx < halfW - 0.1 || proposedCenterPx > wallLengthPx - halfW + 0.1) valid = false;
 
             if (valid) {
-                for (QGraphicsItem *item : items) {
+                for (QGraphicsItem *item : scene()->items()) {
                     if (item == this) continue;
-
                     qreal obsCenterPx = -1;
                     qreal obsHalfW = 0;
                     if (WindowItem *w = dynamic_cast<WindowItem*>(item)) {
@@ -228,61 +188,116 @@ void WindowItem::snapToPos(const QPointF &pt)
                             obsCenterPx = d->distanceFromStart() * 100.0 + obsHalfW;
                         }
                     }
-
-                    if (obsCenterPx >= 0) {
-                        if (qAbs(proposedCenterPx - obsCenterPx) < (halfW + obsHalfW) - 0.1) {
-                            valid = false;
-                            break;
-                        }
+                    if (obsCenterPx >= 0 && qAbs(proposedCenterPx - obsCenterPx) < (halfW + obsHalfW) - 0.1) {
+                        valid = false;
+                        break;
                     }
                 }
             }
         }
 
-        if (!valid) {
-            proposedCenterPx = (m_distance * 100.0) + halfW;
-        }
+        if (!valid) proposedCenterPx = (m_distance * 100.0) + halfW;
 
         qreal finalT = proposedCenterPx / wallLengthPx;
-        QPointF snappedPt(p1.x() + finalT * dx, p1.y() + finalT * dy);
-        setPos(snappedPt);
+        return QPointF(p1_offset.x() + finalT * dx, p1_offset.y() + finalT * dy);
+    }
+    return pos;
+}
 
-        m_distance = (proposedCenterPx - halfW) / 100.0;
-        if (m_distance < 0) m_distance = 0.0;
+QVariant WindowItem::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    if (change == ItemPositionHasChanged && m_hostWall) {
+        QPointF p1 = m_hostWall->mapToScene(m_hostWall->line().p1());
+        QPointF p2 = m_hostWall->mapToScene(m_hostWall->line().p2());
 
-        emit itemChanged();
+        QLineF wallLineScene(p1, p2);
+        QLineF normal = wallLineScene.normalVector();
+        if (normal.length() > 0) {
+            normal.setLength(1.0);
+            QPointF dir(normal.dx(), normal.dy());
+            qreal thickPx = m_hostWall->thicknessInMm() * 0.1;
+            QPointF offset(0, 0);
+            if (m_hostWall->alignment() == 0) offset = -dir * (thickPx / 2.0);
+            else offset = dir * (thickPx / 2.0);
+
+            QPointF p1_offset = p1 + offset;
+            qreal distPx = QLineF(p1_offset, pos()).length();
+            m_distance = (distPx - (m_width / 2.0)) / 100.0;
+            if (m_distance < 0) m_distance = 0.0;
+        }
+    }
+    return BaseEditorItem::itemChange(change, value);
+}
+
+void WindowItem::updateGeometryToWall()
+{
+    if (!m_hostWall) return;
+
+    qreal newDepth = m_hostWall->thicknessInMm() * 0.1;
+    if (qAbs(m_depth - newDepth) > 1e-5) {
+        prepareGeometryChange();
+        m_depth = newDepth;
+    }
+
+    setRotation(-m_hostWall->line().angle());
+
+    QPointF p1 = m_hostWall->mapToScene(m_hostWall->line().p1());
+    QPointF p2 = m_hostWall->mapToScene(m_hostWall->line().p2());
+
+    QLineF wallLineScene(p1, p2);
+    QLineF normal = wallLineScene.normalVector();
+    if (normal.length() == 0) return;
+    normal.setLength(1.0);
+    QPointF dir(normal.dx(), normal.dy());
+
+    qreal thickPx = m_hostWall->thicknessInMm() * 0.1;
+    QPointF offset(0, 0);
+    if (m_hostWall->alignment() == 0) offset = -dir * (thickPx / 2.0);
+    else offset = dir * (thickPx / 2.0);
+
+    QPointF p1_offset = p1 + offset;
+    QPointF p2_offset = p2 + offset;
+
+    qreal dx = p2_offset.x() - p1_offset.x();
+    qreal dy = p2_offset.y() - p1_offset.y();
+    qreal lengthPx = qSqrt(dx * dx + dy * dy);
+
+    if (lengthPx > 0) {
+        qreal targetPx = (m_distance * 100.0) + (m_width / 2.0);
+        qreal t = targetPx / lengthPx;
+        setPos(p1_offset.x() + t * dx, p1_offset.y() + t * dy);
     }
 }
 
-void WindowItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
+void WindowItem::setDistanceFromStart(qreal distanceMeters)
 {
-    if (event->button() == Qt::LeftButton) {
-        m_isDragging = true;
-        setCursor(Qt::ClosedHandCursor);
-    }
-    BaseEditorItem::mousePressEvent(event);
-}
+    if (qAbs(m_distance - distanceMeters) < 1e-5) return;
+    if (!m_hostWall) return;
 
-void WindowItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
-{
-    if (m_isDragging) {
-        snapToPos(event->scenePos());
-        return;
-    }
-    BaseEditorItem::mouseMoveEvent(event);
-}
+    QPointF p1 = m_hostWall->mapToScene(m_hostWall->line().p1());
+    QPointF p2 = m_hostWall->mapToScene(m_hostWall->line().p2());
 
-void WindowItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
-{
-    m_isDragging = false;
-    setCursor(Qt::ArrowCursor);
-    BaseEditorItem::mouseReleaseEvent(event);
-}
+    QLineF wallLineScene(p1, p2);
+    QLineF normal = wallLineScene.normalVector();
+    if (normal.length() == 0) return;
+    normal.setLength(1.0);
+    QPointF dir(normal.dx(), normal.dy());
 
-qreal WindowItem::area() const
-{
-    if (m_hostWall) {
-        return widthInMeters() * (m_hostWall->thicknessInMm() / 1000.0);
+    qreal thickPx = m_hostWall->thicknessInMm() * 0.1;
+    QPointF offset(0, 0);
+    if (m_hostWall->alignment() == 0) offset = -dir * (thickPx / 2.0);
+    else offset = dir * (thickPx / 2.0);
+
+    QPointF p1_offset = p1 + offset;
+    QPointF p2_offset = p2 + offset;
+
+    qreal dx = p2_offset.x() - p1_offset.x();
+    qreal dy = p2_offset.y() - p1_offset.y();
+    qreal lengthPx = qSqrt(dx * dx + dy * dy);
+
+    if (lengthPx > 0) {
+        qreal targetPx = (distanceMeters * 100.0) + (m_width / 2.0);
+        qreal t = targetPx / lengthPx;
+        setPos(p1_offset.x() + t * dx, p1_offset.y() + t * dy);
     }
-    return 0.0;
 }

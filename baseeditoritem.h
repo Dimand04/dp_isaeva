@@ -2,29 +2,29 @@
 #define BASEEDITORITEM_H
 
 #include <QGraphicsObject>
-#include <QPainter>
-#include <QUuid>
+#include <QGraphicsSceneMouseEvent>
+#include <QVariant>
 
 class BaseEditorItem : public QGraphicsObject
 {
     Q_OBJECT
 public:
     explicit BaseEditorItem(QGraphicsItem *parent = nullptr);
-    virtual ~BaseEditorItem();
+    virtual ~BaseEditorItem() = default;
+    void setName(const QString &name);
+    QString name() const;
 
-    QString getId() const { return m_id; }
+protected:
+    virtual QPointF snapPosition(const QPointF &pos) const;
 
-    virtual QRectF boundingRect() const override = 0;
-    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override = 0;
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
 
 signals:
     void itemChanged();
 
-protected:
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
-
 private:
-    QString m_id;
+    QString m_name;
 };
 
 #endif
