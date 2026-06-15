@@ -26,6 +26,8 @@ private slots:
     void onWindowPropertyChanged();
     void onDoorPropertyChanged();
     void onNodePropertyChanged();
+    void onDimensionPropertyChanged();
+    void onTextPropertyChanged();
 
 private:
     Ui::EditorWindow *ui;

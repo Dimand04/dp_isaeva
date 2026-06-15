@@ -13,7 +13,9 @@ enum ToolMode {
     ModeNode,
     ModeWindow,
     ModeDoor,
-    ModeFloor
+    ModeFloor,
+    ModeDimension,
+    ModeText
 };
 
 class EditorScene : public QGraphicsScene
@@ -29,6 +31,7 @@ public:
 
 signals:
     void cursorMoved(const QPointF &scenePos);
+    void toolModeChanged(ToolMode mode);
 
 protected:
     void drawBackground(QPainter *painter, const QRectF &rect) override;
@@ -45,6 +48,7 @@ private:
     class FloorItem *m_currentFloor;
     int m_gridSize;
     QPointF snapToGrid(const QPointF &pos);
+    class DimensionItem *m_currentDimension;
 };
 
 #endif

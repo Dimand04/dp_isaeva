@@ -13,6 +13,7 @@ SOURCES += \
     baseeditoritem.cpp \
     clickablelabel.cpp \
     clienteditordialog.cpp \
+    dimensionitem.cpp \
     dooritem.cpp \
     editorscene.cpp \
     editorview.cpp \
@@ -30,6 +31,7 @@ SOURCES += \
     projectstagedialog.cpp \
     roleeditordialog.cpp \
     simpledicteditordialog.cpp \
+    textitem.cpp \
     usereditordialog.cpp \
     wallitem.cpp \
     windowitem.cpp
@@ -39,6 +41,7 @@ HEADERS += \
     baseeditoritem.h \
     clickablelabel.h \
     clienteditordialog.h \
+    dimensionitem.h \
     dooritem.h \
     editorscene.h \
     editorview.h \
@@ -55,6 +58,7 @@ HEADERS += \
     projectstagedialog.h \
     roleeditordialog.h \
     simpledicteditordialog.h \
+    textitem.h \
     usereditordialog.h \
     wallitem.h \
     windowitem.h

@@ -11,6 +11,8 @@
 #include <QMenu>
 #include <QAction>
 #include <QSet>
+#include "dimensionitem.h"
+#include "textitem.h"
 
 EditorScene::EditorScene(QObject *parent)
     : QGraphicsScene(parent), m_currentMode(ModeCursor), m_isDrawing(false), m_currentWall(nullptr), m_currentFloor(nullptr), m_gridSize(20)
@@ -23,12 +25,19 @@ void EditorScene::setToolMode(ToolMode mode)
     if (m_currentMode == ModeFloor && m_currentFloor && m_currentFloor->isDrawing()) {
         m_currentFloor->finishDrawing();
     }
+    if (m_currentMode == ModeDimension && m_currentDimension && m_currentDimension->isDrawing()) {
+        removeItem(m_currentDimension);
+        delete m_currentDimension;
+    }
 
     m_currentMode = mode;
     m_isDrawing = false;
     m_currentFloor = nullptr;
     m_currentWall = nullptr;
+    m_currentDimension = nullptr;
     clearSelection();
+
+    emit toolModeChanged(mode);
 }
 
 void EditorScene::drawBackground(QPainter *painter, const QRectF &rect)
@@ -164,6 +173,31 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
             }
             return;
         }
+        else if (m_currentMode == ModeDimension) {
+            if (!m_currentDimension) {
+                m_isDrawing = true;
+                m_currentDimension = new DimensionItem();
+                m_currentDimension->setName(generateUniqueName("Размер"));
+                addItem(m_currentDimension);
+                m_currentDimension->setStartPoint(snappedPos);
+            } else {
+                m_currentDimension->setEndPoint(snappedPos);
+                m_currentDimension->finishDrawing();
+                m_currentDimension = nullptr;
+                m_isDrawing = false;
+            }
+            return;
+        }
+        else if (m_currentMode == ModeText) {
+            TextItem *textItem = new TextItem();
+            textItem->setName(generateUniqueName("Метка"));
+            addItem(textItem);
+            textItem->setPos(snappedPos);
+            clearSelection();
+            textItem->setSelected(true);
+            setToolMode(ModeCursor);
+            return;
+        }
     }
     else if (event->button() == Qt::RightButton) {
         if (m_currentMode == ModeFloor && m_currentFloor && m_currentFloor->isDrawing()) {
@@ -173,6 +207,14 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
                 delete m_currentFloor;
                 m_currentFloor = nullptr;
             }
+            event->accept();
+            return;
+        }
+        if (m_currentMode == ModeDimension && m_isDrawing && m_currentDimension) {
+            removeItem(m_currentDimension);
+            delete m_currentDimension;
+            m_currentDimension = nullptr;
+            m_isDrawing = false;
             event->accept();
             return;
         }
@@ -190,6 +232,9 @@ void EditorScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     }
     else if (m_currentMode == ModeFloor && m_currentFloor && m_currentFloor->isDrawing()) {
         m_currentFloor->setDynamicPoint(snappedPos);
+    }
+    else if (m_currentMode == ModeDimension && m_isDrawing && m_currentDimension) {
+        m_currentDimension->setEndPoint(snappedPos);
     }
 
     QGraphicsScene::mouseMoveEvent(event);
@@ -262,6 +307,11 @@ void EditorScene::keyPressEvent(QKeyEvent *event)
 
 void EditorScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
+    if (m_currentMode == ModeFloor) {
+        event->accept();
+        return;
+    }
+
     QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
 
     if (item) {
