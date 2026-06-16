@@ -13,6 +13,7 @@ WindowItem::WindowItem(QGraphicsItem *parent)
 {
     setZValue(1.0);
     setHeight(1.5);
+    m_elevation = 0.8;
 }
 
 void WindowItem::setHostWall(WallItem *wall)
@@ -97,10 +98,7 @@ qreal WindowItem::distanceFromStart() const { return m_distance; }
 
 qreal WindowItem::area() const
 {
-    if (m_hostWall) {
-        return widthInMeters() * (m_hostWall->thicknessInMm() / 1000.0);
-    }
-    return 0.0;
+    return widthInMeters() * height();
 }
 
 QPointF WindowItem::snapPosition(const QPointF &pos) const
