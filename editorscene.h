@@ -5,6 +5,9 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsSceneContextMenuEvent>
 #include <QKeyEvent>
+#include "baseeditoritem.h"
+#include <QSet>
+#include "roofitem.h"
 
 enum ToolMode {
     ModeCursor,
@@ -15,7 +18,8 @@ enum ToolMode {
     ModeDoor,
     ModeFloor,
     ModeDimension,
-    ModeText
+    ModeText,
+    ModeRoof
 };
 
 class EditorScene : public QGraphicsScene
@@ -28,10 +32,15 @@ public:
     void deleteSelectedItems();
     void setWorkspaceSize(qreal widthMeters, qreal heightMeters);
     QSizeF workspaceSize() const;
+    void setActiveLevel(int levelId);
+    void setActiveLayer(const QString &layerName);
+    void updateItemsVisibility();
+    void setLayerVisible(const QString &layerName, bool visible);
 
 signals:
     void cursorMoved(const QPointF &scenePos);
     void toolModeChanged(ToolMode mode);
+    void itemAdded(BaseEditorItem *item);
 
 protected:
     void drawBackground(QPainter *painter, const QRectF &rect) override;
@@ -49,6 +58,10 @@ private:
     int m_gridSize;
     QPointF snapToGrid(const QPointF &pos);
     class DimensionItem *m_currentDimension;
+    int m_activeLevelId = 1;
+    QString m_activeLayerName = "Основной";
+    QSet<QString> m_hiddenLayers;
+    RoofItem *m_currentRoof = nullptr;
 };
 
 #endif

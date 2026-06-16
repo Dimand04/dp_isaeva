@@ -16,16 +16,16 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <property name="leftMargin">
-     <number>3</number>
+     <number>0</number>
     </property>
     <property name="topMargin">
-     <number>3</number>
+     <number>0</number>
     </property>
     <property name="rightMargin">
-     <number>3</number>
+     <number>0</number>
     </property>
     <property name="bottomMargin">
-     <number>3</number>
+     <number>0</number>
     </property>
     <item row="0" column="0">
      <widget class="EditorView" name="graphicsView"/>
@@ -108,88 +108,10 @@
          <property name="bottomMargin">
           <number>0</number>
          </property>
-         <item row="5" column="0">
-          <widget class="QPushButton" name="pb_tool_door">
-           <property name="text">
-            <string>Дверь</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="autoExclusive">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="7" column="0">
-          <widget class="QPushButton" name="pb_tool_floor">
-           <property name="text">
-            <string>Пол</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="autoExclusive">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="0">
-          <widget class="QPushButton" name="pb_tool_window">
-           <property name="text">
-            <string>Окно</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="autoExclusive">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="10" column="0">
-          <spacer name="verticalSpacer">
-           <property name="orientation">
-            <enum>Qt::Orientation::Vertical</enum>
-           </property>
-           <property name="sizeHint" stdset="0">
-            <size>
-             <width>20</width>
-             <height>40</height>
-            </size>
-           </property>
-          </spacer>
-         </item>
          <item row="8" column="0">
           <widget class="QPushButton" name="pb_tool_dimension">
            <property name="text">
             <string>Линейка</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="autoExclusive">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QPushButton" name="pb_tool_foundation">
-           <property name="text">
-            <string>Фундамент</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="autoExclusive">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item row="6" column="0">
-          <widget class="QPushButton" name="pb_tool_node">
-           <property name="text">
-            <string>Узел</string>
            </property>
            <property name="checkable">
             <bool>true</bool>
@@ -212,6 +134,45 @@
            </property>
           </widget>
          </item>
+         <item row="4" column="0">
+          <widget class="QPushButton" name="pb_tool_window">
+           <property name="text">
+            <string>Окно</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoExclusive">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="0">
+          <widget class="QPushButton" name="pb_tool_floor">
+           <property name="text">
+            <string>Пол</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoExclusive">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="11" column="0">
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Orientation::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
          <item row="0" column="0">
           <widget class="QPushButton" name="pb_tool_cursor">
            <property name="text">
@@ -225,10 +186,68 @@
            </property>
           </widget>
          </item>
+         <item row="6" column="0">
+          <widget class="QPushButton" name="pb_tool_node">
+           <property name="text">
+            <string>Узел</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoExclusive">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QPushButton" name="pb_tool_foundation">
+           <property name="text">
+            <string>Фундамент</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoExclusive">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
          <item row="9" column="0">
           <widget class="QPushButton" name="pb_tool_text">
            <property name="text">
             <string>Надпись</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoExclusive">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="0">
+          <widget class="QPushButton" name="pb_tool_door">
+           <property name="text">
+            <string>Дверь</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoExclusive">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="10" column="0">
+          <widget class="QPushButton" name="pb_tool_roof">
+           <property name="text">
+            <string>Крыша</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+           <property name="autoExclusive">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -286,897 +305,1080 @@
          <number>0</number>
         </property>
         <item row="0" column="0">
-         <widget class="QLineEdit" name="le_object_name"/>
-        </item>
-        <item row="1" column="0">
-         <widget class="QStackedWidget" name="stackedWidget">
-          <property name="currentIndex">
-           <number>8</number>
+         <widget class="QSplitter" name="splitter">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
           </property>
-          <widget class="QWidget" name="page_5">
-           <layout class="QGridLayout" name="gridLayout_5">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="sb_workspace_width">
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="minimum">
-               <double>1.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>500.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>20.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0" colspan="2">
-             <spacer name="verticalSpacer_2">
-              <property name="orientation">
-               <enum>Qt::Orientation::Vertical</enum>
-              </property>
-              <property name="sizeHint" stdset="0">
+          <widget class="QStackedWidget" name="stackedWidget">
+           <property name="currentIndex">
+            <number>9</number>
+           </property>
+           <widget class="QWidget" name="page_5">
+            <layout class="QGridLayout" name="gridLayout_5">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="sb_workspace_height">
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="minimum">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>500.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>20.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_30">
+               <property name="text">
+                <string>Ширина холста</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_31">
+               <property name="text">
+                <string>Высота холста</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>Холст</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0" colspan="2">
+              <spacer name="verticalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Orientation::Vertical</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>20</width>
+                 <height>40</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="1" column="1">
+              <widget class="QDoubleSpinBox" name="sb_workspace_width">
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="minimum">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>500.000000000000000</double>
+               </property>
+               <property name="value">
+                <double>20.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_6">
+            <layout class="QFormLayout" name="formLayout">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Ширина</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="sb_found_width">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="maximum">
+                <double>100.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Высота</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QDoubleSpinBox" name="sb_found_height">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="maximum">
+                <double>100.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+               <property name="value">
+                <double>0.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>Фундамент: Свойства</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_8">
+               <property name="text">
+                <string>Угол поворота</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QDoubleSpinBox" name="sb_found_angle">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> °</string>
+               </property>
+               <property name="maximum">
+                <double>360.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>5.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="label_19">
+               <property name="text">
+                <string>Площадь</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QLabel" name="lbl_found_area">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLineEdit" name="le_object_foundation_name"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_3">
+            <layout class="QFormLayout" name="formLayout_2">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>Стена: Свойства</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>Длина</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="sb_wall_length">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="maximum">
+                <double>100.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_7">
+               <property name="text">
+                <string>Толщина</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QDoubleSpinBox" name="sb_wall_thickness">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="maximum">
+                <double>1000.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_9">
+               <property name="text">
+                <string>Угол наклона</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QDoubleSpinBox" name="sb_wall_angle">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> °</string>
+               </property>
+               <property name="maximum">
+                <double>360.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="label_23">
+               <property name="text">
+                <string>Выравнивание</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QComboBox" name="cb_wall_alignment">
+               <item>
+                <property name="text">
+                 <string>По левому краю</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>По правому краю</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="6" column="0">
+              <widget class="QLabel" name="label_20">
+               <property name="text">
+                <string>Площадь</string>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="1">
+              <widget class="QLabel" name="lbl_wall_area">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLineEdit" name="le_object_wall_name"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_4">
+            <layout class="QFormLayout" name="formLayout_3">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_11">
+               <property name="text">
+                <string>Ширина</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="sb_window_width">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="minimum">
+                <double>0.100000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>10.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_12">
+               <property name="text">
+                <string>Высота от пола</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QDoubleSpinBox" name="sb_window_elevation">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="maximum">
+                <double>5.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_13">
+               <property name="text">
+                <string>Тип профиля</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QComboBox" name="cb_window_profile">
+               <item>
+                <property name="text">
+                 <string>ПВХ (Стандарт)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>ПВХ (Премиум / Многокамерный)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Алюминий (Холодный)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Алюминий (Теплый)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Дерево (Евроокно)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Панорамное (Безрамное)</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_10">
+               <property name="text">
+                <string>Окно: Свойства</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="label_14">
+               <property name="text">
+                <string>Расстояние от края</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QDoubleSpinBox" name="sb_window_distance">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="maximum">
+                <double>500.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="0">
+              <widget class="QLabel" name="label_21">
+               <property name="text">
+                <string>Площадь</string>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="1">
+              <widget class="QLabel" name="lbl_window_area">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLineEdit" name="le_object_window_name"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_7">
+            <layout class="QFormLayout" name="formLayout_4">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_16">
+               <property name="text">
+                <string>Ширина двери</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="sb_door_width">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="minimum">
+                <double>0.400000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>3.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+               <property name="value">
+                <double>0.900000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_17">
+               <property name="text">
+                <string>Отступ от края</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QDoubleSpinBox" name="sb_door_distance">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="maximum">
+                <double>500.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_18">
+               <property name="text">
+                <string>Тип открывания</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QComboBox" name="cb_door_swing">
+               <item>
+                <property name="text">
+                 <string>Левое внутрь</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Правое внутрь</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Левое наружу</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Правое наружу</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_15">
+               <property name="text">
+                <string>Двери: Свойства</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="label_22">
+               <property name="text">
+                <string>Площадь</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QLabel" name="lbl_door_area">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLineEdit" name="le_object_door_name"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_8">
+            <layout class="QFormLayout" name="formLayout_5">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_25">
+               <property name="text">
+                <string>Ширина</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="sb_node_width">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="minimum">
+                <double>0.010000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>10.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.050000000000000</double>
+               </property>
+               <property name="value">
+                <double>0.020000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_26">
+               <property name="text">
+                <string>Высота</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QDoubleSpinBox" name="sb_node_height">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="minimum">
+                <double>0.010000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>10.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.050000000000000</double>
+               </property>
+               <property name="value">
+                <double>0.020000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_27">
+               <property name="text">
+                <string>Градусы</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QDoubleSpinBox" name="sb_node_angle">
+               <property name="keyboardTracking">
+                <bool>false</bool>
+               </property>
+               <property name="suffix">
+                <string> °</string>
+               </property>
+               <property name="decimals">
+                <number>1</number>
+               </property>
+               <property name="minimum">
+                <double>-360.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>360.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>90.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="label_28">
+               <property name="text">
+                <string>Тип линии</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QComboBox" name="cb_node_type">
+               <item>
+                <property name="text">
+                 <string>Прямой срез</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Округление</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="6" column="0">
+              <widget class="QLabel" name="label_29">
+               <property name="text">
+                <string>Площадь:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="1">
+              <widget class="QLabel" name="lbl_node_area">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_24">
+               <property name="text">
+                <string>Узел: Свойства</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLineEdit" name="le_object_node_name"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_9">
+            <layout class="QFormLayout" name="formLayout_6">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_33">
+               <property name="text">
+                <string>Площадь:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="lbl_floor_area">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_32">
+               <property name="text">
+                <string>Пол: Свойства</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLineEdit" name="le_object_floor_name"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_10">
+            <layout class="QFormLayout" name="formLayout_7">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_34">
+               <property name="text">
+                <string>Линейка: Свойства</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_35">
+               <property name="text">
+                <string>Длина:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="lbl_dim_length">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_36">
+               <property name="text">
+                <string>Расположение текста</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QComboBox" name="cb_dim_side">
+               <item>
+                <property name="text">
+                 <string>Слева/Сверху</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Справа/Снизу</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLineEdit" name="le_object_line_name"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_11">
+            <layout class="QFormLayout" name="formLayout_8">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_37">
+               <property name="text">
+                <string>Надпись: Свойства</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_38">
+               <property name="text">
+                <string>Текст:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLineEdit" name="le_text_content"/>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_40">
+               <property name="text">
+                <string>Размер</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QSpinBox" name="sb_text_size">
+               <property name="minimum">
+                <number>4</number>
+               </property>
+               <property name="maximum">
+                <number>500</number>
+               </property>
+               <property name="value">
+                <number>14</number>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_39">
+               <property name="text">
+                <string>Угол наклона</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QDoubleSpinBox" name="sb_text_angle">
+               <property name="suffix">
+                <string> °</string>
+               </property>
+               <property name="minimum">
+                <double>-360.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>360.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="2">
+              <widget class="QLineEdit" name="le_object_text_name"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="page_12">
+            <layout class="QFormLayout" name="formLayout_9">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_41">
+               <property name="text">
+                <string>Название</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="le_object_roof_name"/>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_42">
+               <property name="text">
+                <string>Тип крыши</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QComboBox" name="cb_roof_type">
+               <item>
+                <property name="text">
+                 <string>Плоская</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Двускатная</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Вальмовая (4-скат)</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_43">
+               <property name="text">
+                <string>Свес</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="sb_roof_overhang">
+               <property name="suffix">
+                <string> м</string>
+               </property>
+               <property name="maximum">
+                <double>5.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_44">
+               <property name="text">
+                <string>Угол</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QDoubleSpinBox" name="sb_roof_angle">
+               <property name="suffix">
+                <string> °</string>
+               </property>
+               <property name="maximum">
+                <double>85.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_45">
+               <property name="text">
+                <string>Площадь</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QLabel" name="lbl_roof_area">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+          <widget class="QWidget" name="gridLayoutWidget">
+           <layout class="QGridLayout" name="gridLayout_7">
+            <item row="0" column="1">
+             <widget class="QPushButton" name="btn_add_floor">
+              <property name="maximumSize">
                <size>
-                <width>20</width>
-                <height>40</height>
+                <width>24</width>
+                <height>16777215</height>
                </size>
               </property>
-             </spacer>
-            </item>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label">
               <property name="text">
-               <string>Холст</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+               <string>+</string>
               </property>
              </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QComboBox" name="cb_active_floor">
+              <item>
+               <property name="text">
+                <string>Этаж 1</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="2" column="0" colspan="2">
+             <widget class="QTreeView" name="objectTreeView"/>
             </item>
             <item row="1" column="0">
-             <widget class="QLabel" name="label_30">
-              <property name="text">
-               <string>Ширина холста</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_31">
-              <property name="text">
-               <string>Высота холста</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="sb_workspace_height">
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="minimum">
-               <double>1.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>500.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>20.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="page_6">
-           <layout class="QFormLayout" name="formLayout">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_2">
-              <property name="text">
-               <string>Ширина</string>
-              </property>
+             <widget class="QComboBox" name="cb_active_layer">
+              <item>
+               <property name="text">
+                <string>Основной</string>
+               </property>
+              </item>
              </widget>
             </item>
             <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="sb_found_width">
-              <property name="keyboardTracking">
-               <bool>false</bool>
+             <widget class="QPushButton" name="btn_add_layer">
+              <property name="maximumSize">
+               <size>
+                <width>24</width>
+                <height>16777215</height>
+               </size>
               </property>
-              <property name="maximum">
-               <double>100.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_3">
               <property name="text">
-               <string>Высота</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="sb_found_height">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="maximum">
-               <double>100.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label_4">
-              <property name="text">
-               <string>Фундамент: Свойства</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_8">
-              <property name="text">
-               <string>Угол поворота</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QDoubleSpinBox" name="sb_found_angle">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> °</string>
-              </property>
-              <property name="maximum">
-               <double>360.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>5.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_19">
-              <property name="text">
-               <string>Площадь</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QLabel" name="lbl_found_area">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="page_3">
-           <layout class="QFormLayout" name="formLayout_2">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label_5">
-              <property name="text">
-               <string>Стена: Свойства</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_6">
-              <property name="text">
-               <string>Длина</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="sb_wall_length">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="maximum">
-               <double>100.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_7">
-              <property name="text">
-               <string>Толщина</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="sb_wall_thickness">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="maximum">
-               <double>1000.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_9">
-              <property name="text">
-               <string>Угол наклона</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QDoubleSpinBox" name="sb_wall_angle">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> °</string>
-              </property>
-              <property name="maximum">
-               <double>360.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_23">
-              <property name="text">
-               <string>Выравнивание</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QComboBox" name="cb_wall_alignment">
-              <item>
-               <property name="text">
-                <string>По левому краю</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>По правому краю</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="label_20">
-              <property name="text">
-               <string>Площадь</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QLabel" name="lbl_wall_area">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="page_4">
-           <layout class="QFormLayout" name="formLayout_3">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_11">
-              <property name="text">
-               <string>Ширина</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="sb_window_width">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="minimum">
-               <double>0.100000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>10.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_12">
-              <property name="text">
-               <string>Высота от пола</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="sb_window_elevation">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="maximum">
-               <double>5.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_13">
-              <property name="text">
-               <string>Тип профиля</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QComboBox" name="cb_window_profile">
-              <item>
-               <property name="text">
-                <string>ПВХ (Стандарт)</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>ПВХ (Премиум / Многокамерный)</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Алюминий (Холодный)</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Алюминий (Теплый)</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Дерево (Евроокно)</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Панорамное (Безрамное)</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label_10">
-              <property name="text">
-               <string>Окно: Свойства</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_14">
-              <property name="text">
-               <string>Расстояние от края</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QDoubleSpinBox" name="sb_window_distance">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="maximum">
-               <double>500.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="label_21">
-              <property name="text">
-               <string>Площадь</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QLabel" name="lbl_window_area">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="page_7">
-           <layout class="QFormLayout" name="formLayout_4">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_16">
-              <property name="text">
-               <string>Ширина двери</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="sb_door_width">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="minimum">
-               <double>0.400000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>3.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.900000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_17">
-              <property name="text">
-               <string>Отступ от края</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="sb_door_distance">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="maximum">
-               <double>500.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_18">
-              <property name="text">
-               <string>Тип открывания</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QComboBox" name="cb_door_swing">
-              <item>
-               <property name="text">
-                <string>Левое внутрь</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Правое внутрь</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Левое наружу</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Правое наружу</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label_15">
-              <property name="text">
-               <string>Двери: Свойства</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_22">
-              <property name="text">
-               <string>Площадь</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QLabel" name="lbl_door_area">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="page_8">
-           <layout class="QFormLayout" name="formLayout_5">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_25">
-              <property name="text">
-               <string>Ширина</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="sb_node_width">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="minimum">
-               <double>0.010000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>10.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.050000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.020000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_26">
-              <property name="text">
-               <string>Высота</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="sb_node_height">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> м</string>
-              </property>
-              <property name="minimum">
-               <double>0.010000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>10.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.050000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.020000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_27">
-              <property name="text">
-               <string>Градусы</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QDoubleSpinBox" name="sb_node_angle">
-              <property name="keyboardTracking">
-               <bool>false</bool>
-              </property>
-              <property name="suffix">
-               <string> °</string>
-              </property>
-              <property name="decimals">
-               <number>1</number>
-              </property>
-              <property name="minimum">
-               <double>-360.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>360.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>90.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_28">
-              <property name="text">
-               <string>Тип линии</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QComboBox" name="cb_node_type">
-              <item>
-               <property name="text">
-                <string>Прямой срез</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Округление</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="label_29">
-              <property name="text">
-               <string>Площадь:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QLabel" name="lbl_node_area">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label_24">
-              <property name="text">
-               <string>Узел: Свойства</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="page_9">
-           <layout class="QFormLayout" name="formLayout_6">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_33">
-              <property name="text">
-               <string>Площадь:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLabel" name="lbl_floor_area">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label_32">
-              <property name="text">
-               <string>Пол: Свойства</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="page_10">
-           <layout class="QFormLayout" name="formLayout_7">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label_34">
-              <property name="text">
-               <string>Линейка: Свойства</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_35">
-              <property name="text">
-               <string>Длина:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLabel" name="lbl_dim_length">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_36">
-              <property name="text">
-               <string>Расположение текста</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QComboBox" name="cb_dim_side">
-              <item>
-               <property name="text">
-                <string>Слева/Сверху</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Справа/Снизу</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="page_11">
-           <layout class="QFormLayout" name="formLayout_8">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item row="0" column="0" colspan="2">
-             <widget class="QLabel" name="label_37">
-              <property name="text">
-               <string>Надпись: Свойства</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_38">
-              <property name="text">
-               <string>Текст:</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLineEdit" name="le_text_content"/>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_39">
-              <property name="text">
-               <string>Угол наклона</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QDoubleSpinBox" name="sb_text_angle">
-              <property name="suffix">
-               <string> °</string>
-              </property>
-              <property name="minimum">
-               <double>-360.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>360.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_40">
-              <property name="text">
-               <string>Размер</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QSpinBox" name="sb_text_size">
-              <property name="minimum">
-               <number>4</number>
-              </property>
-              <property name="maximum">
-               <number>500</number>
-              </property>
-              <property name="value">
-               <number>14</number>
+               <string>+</string>
               </property>
              </widget>
             </item>

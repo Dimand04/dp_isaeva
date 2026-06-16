@@ -1,0 +1,287 @@
+#include "roofitem.h"
+#include <QPainter>
+#include <QPen>
+#include <QBrush>
+#include <QGraphicsSceneMouseEvent>
+#include <QtMath>
+
+RoofItem::RoofItem(QGraphicsItem *parent)
+    : BaseEditorItem(parent), m_isDrawing(true), m_dragIndex(-1),
+    m_roofType(Flat), m_overhang(0.5), m_angle(0.0)
+{
+    setZValue(5.0);
+}
+
+QRectF RoofItem::boundingRect() const
+{
+    if (m_polygon.isEmpty()) return QRectF();
+    return shape().boundingRect().adjusted(-5, -5, 5, 5);
+}
+
+QPainterPath RoofItem::shape() const
+{
+    QPainterPath path;
+    if (m_polygon.isEmpty()) return path;
+
+    path.addPolygon(m_polygon);
+
+    QPainterPathStroker stroker;
+    stroker.setWidth(15);
+    QPainterPath finalPath = stroker.createStroke(path);
+
+    finalPath.addPath(path);
+
+    for (const QPointF &pt : m_polygon) {
+        finalPath.addEllipse(pt, 12.0, 12.0);
+    }
+
+    return finalPath;
+}
+
+void RoofItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
+    if (m_polygon.isEmpty()) return;
+
+    if (m_isDrawing) {
+        painter->setBrush(QColor(150, 100, 50, 120));
+        painter->setPen(QPen(QColor(100, 50, 20), 2, Qt::DashLine));
+        painter->drawPolygon(m_polygon);
+
+        painter->setBrush(Qt::white);
+        painter->setPen(QPen(Qt::black, 1));
+        for (const QPointF &pt : m_polygon) {
+            painter->drawEllipse(pt, 3, 3);
+        }
+    } else {
+        painter->setBrush(QColor(180, 90, 60, 240));
+        painter->setPen(QPen(QColor(80, 40, 20), 2, Qt::SolidLine));
+        painter->drawPolygon(m_polygon);
+
+        if (m_roofType == Gable || m_roofType == Hip) {
+            painter->setPen(QPen(QColor(80, 40, 20), 1, Qt::DashLine));
+            QPointF center = m_polygon.boundingRect().center();
+            for (const QPointF &pt : m_polygon) {
+                painter->drawLine(center, pt);
+            }
+        }
+
+        if (isSelected()) {
+            painter->setBrush(Qt::NoBrush);
+            painter->setPen(QPen(QColor(21, 101, 192), 3, Qt::DashLine));
+            painter->drawPolygon(m_polygon);
+
+            painter->setBrush(Qt::white);
+            painter->setPen(QPen(QColor(21, 101, 192), 2));
+            for (const QPointF &pt : m_polygon) {
+                painter->drawRect(QRectF(pt.x() - 4, pt.y() - 4, 8, 8));
+            }
+        }
+    }
+}
+
+int RoofItem::roofType() const { return m_roofType; }
+
+void RoofItem::setRoofType(int type) {
+    if (m_roofType == type) return;
+    m_roofType = type;
+    update();
+    emit itemChanged();
+}
+
+qreal RoofItem::overhang() const { return m_overhang; }
+
+void RoofItem::setOverhang(qreal meters) {
+    if (qAbs(m_overhang - meters) < 1e-5) return;
+    m_overhang = meters;
+    emit itemChanged();
+}
+
+qreal RoofItem::angle() const { return m_angle; }
+
+void RoofItem::setAngle(qreal degrees) {
+    if (degrees > 85.0) degrees = 85.0;
+    if (degrees < 0.0) degrees = 0.0;
+
+    if (qAbs(m_angle - degrees) < 1e-5) return;
+    m_angle = degrees;
+    emit itemChanged();
+}
+
+qreal RoofItem::area() const
+{
+    if (m_polygon.size() < 3) return 0.0;
+    qreal totalArea = 0;
+    int n = m_polygon.size();
+    for (int i = 0; i < n; ++i) {
+        QPointF p1 = m_polygon[i];
+        QPointF p2 = m_polygon[(i + 1) % n];
+        totalArea += (p1.x() * p2.y() - p2.x() * p1.y());
+    }
+
+    qreal flatAreaMeters = qAbs(totalArea) / 2.0 / 10000.0;
+
+    qreal angleRad = qDegreesToRadians(m_angle);
+    qreal realArea = flatAreaMeters / qCos(angleRad);
+
+    return realArea;
+}
+
+void RoofItem::addPoint(const QPointF &scenePos)
+{
+    prepareGeometryChange();
+    if (m_polygon.isEmpty()) {
+        setPos(scenePos);
+        m_polygon << QPointF(0, 0) << QPointF(0, 0);
+    } else {
+        m_polygon.last() = mapFromScene(scenePos);
+        m_polygon.append(mapFromScene(scenePos));
+    }
+    update();
+}
+
+void RoofItem::setDynamicPoint(const QPointF &scenePos)
+{
+    if (m_polygon.isEmpty() || !m_isDrawing) return;
+    prepareGeometryChange();
+    m_polygon.last() = mapFromScene(scenePos);
+    update();
+}
+
+void RoofItem::finishDrawing()
+{
+    if (!m_isDrawing) return;
+
+    prepareGeometryChange();
+    if (!m_polygon.isEmpty()) {
+        m_polygon.removeLast();
+    }
+
+    m_isDrawing = false;
+
+    if (m_polygon.size() > 2) {
+        QPointF c = m_polygon.boundingRect().center();
+        QPolygonF localPoly;
+        for (const QPointF &pt : m_polygon) {
+            localPoly.append(pt - c);
+        }
+        m_polygon = localPoly;
+        setPos(mapToScene(c));
+    }
+
+    update();
+    emit itemChanged();
+}
+
+void RoofItem::resumeDrawing(const QPointF &cursorScenePos)
+{
+    if (m_isDrawing) return;
+    prepareGeometryChange();
+    m_isDrawing = true;
+    m_polygon.append(mapFromScene(cursorScenePos));
+    update();
+}
+
+bool RoofItem::isDrawing() const { return m_isDrawing; }
+
+int RoofItem::polygonSize() const { return m_polygon.size(); }
+
+int RoofItem::vertexAt(const QPointF &localPos) const
+{
+    for (int i = 0; i < m_polygon.size(); ++i) {
+        if (QLineF(localPos, m_polygon[i]).length() <= 12.0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void RoofItem::removePoint(int index)
+{
+    if (index >= 0 && index < m_polygon.size() && m_polygon.size() > 3) {
+        prepareGeometryChange();
+        m_polygon.removeAt(index);
+
+        QPointF c = m_polygon.boundingRect().center();
+        QPolygonF localPoly;
+        for (const QPointF &pt : m_polygon) {
+            localPoly.append(pt - c);
+        }
+        m_polygon = localPoly;
+        setPos(mapToScene(c));
+
+        update();
+        emit itemChanged();
+    }
+}
+
+void RoofItem::removeLastPoint()
+{
+    if (m_isDrawing && m_polygon.size() > 1) {
+        prepareGeometryChange();
+        m_polygon.removeAt(m_polygon.size() - 2);
+        update();
+    }
+}
+
+QVariant RoofItem::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    if (change == ItemPositionChange && !m_isDrawing) {
+        return snapPosition(value.toPointF());
+    }
+    return BaseEditorItem::itemChange(change, value);
+}
+
+void RoofItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
+{
+    if (!m_isDrawing && event->button() == Qt::LeftButton) {
+        int idx = vertexAt(event->pos());
+        if (idx != -1) {
+            setSelected(true);
+            m_dragIndex = idx;
+            event->accept();
+            return;
+        }
+    }
+    BaseEditorItem::mousePressEvent(event);
+}
+
+void RoofItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+{
+    if (m_dragIndex != -1) {
+        QPointF scenePos = event->scenePos();
+        QPointF snappedScene = snapPosition(scenePos);
+
+        prepareGeometryChange();
+        m_polygon[m_dragIndex] = mapFromScene(snappedScene);
+        update();
+        emit itemChanged();
+        return;
+    }
+    BaseEditorItem::mouseMoveEvent(event);
+}
+
+void RoofItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+{
+    if (m_dragIndex != -1) {
+        m_dragIndex = -1;
+
+        prepareGeometryChange();
+        QPointF c = m_polygon.boundingRect().center();
+        QPolygonF localPoly;
+        for (const QPointF &pt : m_polygon) {
+            localPoly.append(pt - c);
+        }
+        m_polygon = localPoly;
+        setPos(mapToScene(c));
+
+        update();
+        emit itemChanged();
+
+        event->accept();
+        return;
+    }
+    BaseEditorItem::mouseReleaseEvent(event);
+}

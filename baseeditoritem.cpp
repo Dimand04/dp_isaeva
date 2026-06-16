@@ -3,7 +3,9 @@
 #include <QtMath>
 
 BaseEditorItem::BaseEditorItem(QGraphicsItem *parent)
-    : QGraphicsObject(parent)
+    : QGraphicsObject(parent),
+    m_levelId(1),
+    m_layerName("Основной")
 {
     setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemSendsGeometryChanges);
 }
@@ -45,4 +47,28 @@ void BaseEditorItem::setName(const QString &name)
 QString BaseEditorItem::name() const
 {
     return m_name;
+}
+
+void BaseEditorItem::setLevelId(int levelId)
+{
+    if (m_levelId == levelId) return;
+    m_levelId = levelId;
+    emit itemChanged();
+}
+
+int BaseEditorItem::levelId() const
+{
+    return m_levelId;
+}
+
+void BaseEditorItem::setLayerName(const QString &layerName)
+{
+    if (m_layerName == layerName) return;
+    m_layerName = layerName;
+    emit itemChanged();
+}
+
+QString BaseEditorItem::layerName() const
+{
+    return m_layerName;
 }

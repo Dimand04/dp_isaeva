@@ -30,6 +30,7 @@ SOURCES += \
     projectestimatedialog.cpp \
     projectstagedialog.cpp \
     roleeditordialog.cpp \
+    roofitem.cpp \
     simpledicteditordialog.cpp \
     textitem.cpp \
     usereditordialog.cpp \
@@ -57,6 +58,7 @@ HEADERS += \
     projectestimatedialog.h \
     projectstagedialog.h \
     roleeditordialog.h \
+    roofitem.h \
     simpledicteditordialog.h \
     textitem.h \
     usereditordialog.h \
