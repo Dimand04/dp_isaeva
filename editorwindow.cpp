@@ -212,6 +212,8 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->cb_roof_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onRoofPropertyChanged);
     connect(ui->sb_roof_overhang, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onRoofPropertyChanged);
     connect(ui->sb_roof_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onRoofPropertyChanged);
+
+    connect(ui->pb_tool_roof, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
 }
 
 EditorWindow::~EditorWindow()
@@ -472,7 +474,14 @@ void EditorWindow::onSelectionChanged()
             ui->le_object_roof_name->setText(roof->name());
             ui->cb_roof_type->setCurrentIndex(roof->roofType());
             ui->sb_roof_overhang->setValue(roof->overhang());
-            ui->sb_roof_angle->setValue(roof->angle());
+
+            if (roof->roofType() == RoofItem::Flat) {
+                ui->sb_roof_angle->setValue(0);
+                ui->sb_roof_angle->setEnabled(false);
+            } else {
+                ui->sb_roof_angle->setValue(roof->angle());
+                ui->sb_roof_angle->setEnabled(true);
+            }
 
             ui->lbl_roof_area->setText(QString("Площадь: %1 м²").arg(roof->area(), 0, 'f', 2));
 
@@ -724,9 +733,21 @@ void EditorWindow::onRoofPropertyChanged()
             QString newName = ui->le_object_roof_name->text();
             if (roof->name() != newName) roof->setName(newName);
 
-            roof->setRoofType(ui->cb_roof_type->currentIndex());
+            int newType = ui->cb_roof_type->currentIndex();
+            roof->setRoofType(newType);
+
+            if (newType == RoofItem::Flat) {
+                ui->sb_roof_angle->blockSignals(true);
+                ui->sb_roof_angle->setValue(0);
+                ui->sb_roof_angle->setEnabled(false);
+                ui->sb_roof_angle->blockSignals(false);
+                roof->setAngle(0);
+            } else {
+                ui->sb_roof_angle->setEnabled(true);
+                roof->setAngle(ui->sb_roof_angle->value());
+            }
+
             roof->setOverhang(ui->sb_roof_overhang->value());
-            roof->setAngle(ui->sb_roof_angle->value());
         }
     }
 }

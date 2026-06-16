@@ -31,6 +31,10 @@ void EditorScene::setToolMode(ToolMode mode)
         delete m_currentDimension;
     }
 
+    if (m_currentMode == ModeRoof && m_currentRoof && m_currentRoof->isDrawing()) {
+        m_currentRoof->finishDrawing();
+    }
+
     m_currentMode = mode;
     m_isDrawing = false;
     m_currentFloor = nullptr;
@@ -391,16 +395,22 @@ void EditorScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
             continueAction = menu.addAction("Продолжить");
 
             vIndex = floor->vertexAt(floor->mapFromScene(event->scenePos()));
-            if (vIndex != -1 && floor->polygonSize() > 3) {
+            if (vIndex != -1) {
                 deletePointAction = menu.addAction("Удалить точку");
+                if (floor->polygonSize() <= 3) {
+                    deletePointAction->setEnabled(false);
+                }
             }
         }
         else if (roof && !roof->isDrawing()) {
             continueAction = menu.addAction("Продолжить");
 
             vIndex = roof->vertexAt(roof->mapFromScene(event->scenePos()));
-            if (vIndex != -1 && roof->polygonSize() > 3) {
+            if (vIndex != -1) {
                 deletePointAction = menu.addAction("Удалить точку");
+                if (roof->polygonSize() <= 3) {
+                    deletePointAction->setEnabled(false);
+                }
             }
         }
 

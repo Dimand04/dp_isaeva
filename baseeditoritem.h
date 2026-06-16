@@ -21,6 +21,9 @@ public:
     void setLayerName(const QString &layerName);
     QString layerName() const;
 
+    virtual void setHeight(qreal height);
+    virtual qreal height() const;
+
 protected:
     virtual QPointF snapPosition(const QPointF &pos) const;
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
@@ -33,6 +36,7 @@ private:
     QString m_name;
     int m_levelId;
     QString m_layerName;
+    qreal m_height;
 };
 
 #endif

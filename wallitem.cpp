@@ -320,3 +320,29 @@ void WallItem::updateAttachedItems()
         }
     }
 }
+
+qreal WallItem::grossSurfaceArea() const
+{
+    return lengthInMeters() * height();
+}
+
+qreal WallItem::netSurfaceArea() const
+{
+    qreal gross = grossSurfaceArea();
+    qreal deductions = 0.0;
+
+    if (scene()) {
+        for (QGraphicsItem *item : scene()->items()) {
+            if (WindowItem *w = dynamic_cast<WindowItem*>(item)) {
+                if (w->hostWall() == this) {
+                    deductions += w->widthInMeters() * w->height();
+                }
+            } else if (DoorItem *d = dynamic_cast<DoorItem*>(item)) {
+                if (d->hostWall() == this) {
+                    deductions += d->widthInMeters() * d->height();
+                }
+            }
+        }
+    }
+    return qMax(0.0, gross - deductions);
+}

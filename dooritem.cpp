@@ -12,6 +12,7 @@ DoorItem::DoorItem(QGraphicsItem *parent)
     m_swingType(0), m_distance(0.0)
 {
     setZValue(1.1);
+    setHeight(2.1);
 }
 
 void DoorItem::setHostWall(WallItem *wall)

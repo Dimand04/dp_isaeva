@@ -5,7 +5,8 @@
 BaseEditorItem::BaseEditorItem(QGraphicsItem *parent)
     : QGraphicsObject(parent),
     m_levelId(1),
-    m_layerName("Основной")
+    m_layerName("Основной"),
+    m_height(2.8)
 {
     setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemSendsGeometryChanges);
 }
@@ -71,4 +72,16 @@ void BaseEditorItem::setLayerName(const QString &layerName)
 QString BaseEditorItem::layerName() const
 {
     return m_layerName;
+}
+
+void BaseEditorItem::setHeight(qreal height)
+{
+    if (qAbs(m_height - height) < 1e-5) return;
+    m_height = height;
+    emit itemChanged();
+}
+
+qreal BaseEditorItem::height() const
+{
+    return m_height;
 }

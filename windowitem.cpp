@@ -12,6 +12,7 @@ WindowItem::WindowItem(QGraphicsItem *parent)
     m_elevation(0.8), m_profileType(0), m_distance(0.0)
 {
     setZValue(1.0);
+    setHeight(1.5);
 }
 
 void WindowItem::setHostWall(WallItem *wall)
