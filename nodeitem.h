@@ -26,6 +26,11 @@ public:
 
     qreal area() const;
 
+    qreal maxAttachedWallHeight() const;
+
+    QJsonObject toJson() const override;
+    void fromJson(const QJsonObject &json) override;
+
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;

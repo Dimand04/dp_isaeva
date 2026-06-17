@@ -4,17 +4,20 @@
 #include <QCursor>
 #include <QtMath>
 #include <QGraphicsView>
+#include <QJsonObject>
 
-FoundationBlockItem::FoundationBlockItem(qreal width, qreal height, QGraphicsItem *parent)
-    : BaseEditorItem(parent), m_width(width), m_height(height), m_state(StateNone)
+FoundationBlockItem::FoundationBlockItem(qreal width, qreal length, QGraphicsItem *parent)
+    : BaseEditorItem(parent), m_width(width), m_length(length), m_state(StateNone)
 {
     setAcceptHoverEvents(true);
+    setZValue(0.0);
+    setTransformOriginPoint(m_width / 2, m_length / 2);
 
-    setTransformOriginPoint(m_width / 2, m_height / 2);
+    setHeight(1.0);
 }
 
 QRectF FoundationBlockItem::resizeHandle() const {
-    return QRectF(m_width - 10, m_height - 10, 10, 10);
+    return QRectF(m_width - 10, m_length - 10, 10, 10);
 }
 
 QRectF FoundationBlockItem::rotateHandle() const {
@@ -22,7 +25,7 @@ QRectF FoundationBlockItem::rotateHandle() const {
 }
 
 QRectF FoundationBlockItem::boundingRect() const {
-    return QRectF(0, -30, m_width, m_height + 30).adjusted(-5, -5, 5, 5);
+    return QRectF(0, -30, m_width, m_length + 30).adjusted(-5, -5, 5, 5);
 }
 
 void FoundationBlockItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -30,7 +33,7 @@ void FoundationBlockItem::paint(QPainter *painter, const QStyleOptionGraphicsIte
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
-    QRectF rect(0, 0, m_width, m_height);
+    QRectF rect(0, 0, m_width, m_length);
 
     painter->setBrush(QColor(200, 200, 200, 150));
     if (isSelected()) {
@@ -93,16 +96,15 @@ void FoundationBlockItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         qreal rawHeight = qMax(20.0, event->pos().y());
 
         m_width = qRound(rawWidth / gridSize) * gridSize;
-        m_height = qRound(rawHeight / gridSize) * gridSize;
+        m_length = qRound(rawHeight / gridSize) * gridSize;
 
-        setTransformOriginPoint(m_width / 2, m_height / 2);
+        setTransformOriginPoint(m_width / 2, m_length / 2);
 
         scene()->update();
-
         emit itemChanged();
 
     } else if (m_state == StateRotate) {
-        QPointF centerInScene = mapToScene(m_width / 2, m_height / 2);
+        QPointF centerInScene = mapToScene(m_width / 2, m_length / 2);
 
         QPointF dir = event->scenePos() - centerInScene;
 
@@ -130,7 +132,6 @@ void FoundationBlockItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         }
 
         setRotation(angleDeg);
-
         emit itemChanged();
 
     } else {
@@ -149,16 +150,28 @@ void FoundationBlockItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
 void FoundationBlockItem::setWidthInMeters(qreal widthMeters)
 {
+    if (qAbs(widthInMeters() - widthMeters) < 1e-5) return;
+
     prepareGeometryChange();
     m_width = widthMeters * 100.0;
+
+    setTransformOriginPoint(m_width / 2.0, m_length / 2.0);
+
     update();
+    emit itemChanged();
 }
 
-void FoundationBlockItem::setHeightInMeters(qreal heightMeters)
+void FoundationBlockItem::setLengthInMeters(qreal lengthMeters)
 {
+    if (qAbs(lengthInMeters() - lengthMeters) < 1e-5) return;
+
     prepareGeometryChange();
-    m_height = heightMeters * 100.0;
+    m_length = lengthMeters * 100.0;
+
+    setTransformOriginPoint(m_width / 2.0, m_length / 2.0);
+
     update();
+    emit itemChanged();
 }
 
 qreal FoundationBlockItem::widthInMeters() const
@@ -166,12 +179,39 @@ qreal FoundationBlockItem::widthInMeters() const
     return m_width / 100.0;
 }
 
-qreal FoundationBlockItem::heightInMeters() const
+qreal FoundationBlockItem::lengthInMeters() const
 {
-    return m_height / 100.0;
+    return m_length / 100.0;
 }
 
 qreal FoundationBlockItem::area() const
 {
-    return widthInMeters() * heightInMeters();
+    return widthInMeters() * lengthInMeters();
+}
+
+qreal FoundationBlockItem::volume() const
+{
+    return area() * height();
+}
+
+QJsonObject FoundationBlockItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+
+    json["width"] = m_width;
+    json["length"] = m_length;
+
+    return json;
+}
+
+void FoundationBlockItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+
+    m_width = json["width"].toDouble();
+    m_length = json["length"].toDouble();
+
+    setTransformOriginPoint(m_width / 2.0, m_length / 2.0);
+
+    update();
 }

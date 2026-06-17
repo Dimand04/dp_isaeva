@@ -5,12 +5,15 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QtMath>
 #include <QPainterPathStroker>
+#include <QJsonObject>
+#include <QJsonArray>
 
 RoofItem::RoofItem(QGraphicsItem *parent)
     : BaseEditorItem(parent), m_isDrawing(true), m_dragIndex(-1),
     m_roofType(Flat), m_overhang(0.5), m_angle(0.0)
 {
     setZValue(5.0);
+    setHeight(0.15);
 }
 
 QRectF RoofItem::boundingRect() const
@@ -317,4 +320,48 @@ void RoofItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         return;
     }
     BaseEditorItem::mouseReleaseEvent(event);
+}
+
+qreal RoofItem::volume() const
+{
+    return area() * height();
+}
+
+QJsonObject RoofItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+
+    QJsonArray polyArray;
+    for (const QPointF &pt : m_polygon) {
+        QJsonObject ptObj;
+        ptObj["x"] = pt.x();
+        ptObj["y"] = pt.y();
+        polyArray.append(ptObj);
+    }
+    json["polygon"] = polyArray;
+
+    json["roof_type"] = m_roofType;
+    json["overhang"] = m_overhang;
+    json["angle"] = m_angle;
+
+    return json;
+}
+
+void RoofItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+
+    m_polygon.clear();
+    QJsonArray polyArray = json["polygon"].toArray();
+    for (const QJsonValue &val : polyArray) {
+        QJsonObject ptObj = val.toObject();
+        m_polygon.append(QPointF(ptObj["x"].toDouble(), ptObj["y"].toDouble()));
+    }
+
+    m_roofType = json["roof_type"].toInt();
+    m_overhang = json["overhang"].toDouble();
+    m_angle = json["angle"].toDouble();
+
+    m_isDrawing = false;
+    update();
 }

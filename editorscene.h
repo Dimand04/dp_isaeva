@@ -19,7 +19,8 @@ enum ToolMode {
     ModeFloor,
     ModeDimension,
     ModeText,
-    ModeRoof
+    ModeRoof,
+    ModeObject
 };
 
 class EditorScene : public QGraphicsScene

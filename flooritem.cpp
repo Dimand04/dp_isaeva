@@ -4,11 +4,14 @@
 #include <QBrush>
 #include <QGraphicsSceneMouseEvent>
 #include <QtMath>
+#include <QJsonObject>
+#include <QJsonArray>
 
 FloorItem::FloorItem(QGraphicsItem *parent)
     : BaseEditorItem(parent), m_isDrawing(true), m_dragIndex(-1)
 {
     setZValue(0.1);
+    setHeight(0.20);
 }
 
 QRectF FloorItem::boundingRect() const
@@ -241,4 +244,40 @@ void FloorItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         return;
     }
     BaseEditorItem::mouseReleaseEvent(event);
+}
+
+qreal FloorItem::volume() const
+{
+    return area() * height();
+}
+
+QJsonObject FloorItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+
+    QJsonArray polyArray;
+    for (const QPointF &pt : m_polygon) {
+        QJsonObject ptObj;
+        ptObj["x"] = pt.x();
+        ptObj["y"] = pt.y();
+        polyArray.append(ptObj);
+    }
+    json["polygon"] = polyArray;
+
+    return json;
+}
+
+void FloorItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+
+    m_polygon.clear();
+    QJsonArray polyArray = json["polygon"].toArray();
+    for (const QJsonValue &val : polyArray) {
+        QJsonObject ptObj = val.toObject();
+        m_polygon.append(QPointF(ptObj["x"].toDouble(), ptObj["y"].toDouble()));
+    }
+
+    m_isDrawing = false;
+    update();
 }

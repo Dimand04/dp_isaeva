@@ -1,6 +1,16 @@
 #include "baseeditoritem.h"
 #include <QGraphicsScene>
 #include <QtMath>
+#include "dimensionitem.h"
+#include "dooritem.h"
+#include "flooritem.h"
+#include "foundationblockitem.h"
+#include "nodeitem.h"
+#include "objectitem.h"
+#include "roofitem.h"
+#include "textitem.h"
+#include "wallitem.h"
+#include "windowitem.h"
 
 BaseEditorItem::BaseEditorItem(QGraphicsItem *parent)
     : QGraphicsObject(parent),
@@ -84,4 +94,59 @@ void BaseEditorItem::setHeight(qreal height)
 qreal BaseEditorItem::height() const
 {
     return m_height;
+}
+
+QJsonObject BaseEditorItem::toJson() const
+{
+    QJsonObject json;
+    json["class_type"] = metaObject()->className();
+    json["name"] = m_name;
+    json["level_id"] = m_levelId;
+    json["layer_name"] = m_layerName;
+    json["pos_x"] = pos().x();
+    json["pos_y"] = pos().y();
+    json["rotation"] = rotation();
+    json["height"] = m_height;
+    json["material_id"] = m_materialId;
+
+    return json;
+}
+
+void BaseEditorItem::fromJson(const QJsonObject &json)
+{
+    m_name = json["name"].toString();
+    m_levelId = json["level_id"].toInt();
+    m_layerName = json["layer_name"].toString();
+    setPos(json["pos_x"].toDouble(), json["pos_y"].toDouble());
+    setRotation(json["rotation"].toDouble());
+
+    if (json.contains("height")) {
+        setHeight(json["height"].toDouble());
+    }
+
+    if (json.contains("material_id")) {
+        m_materialId = json["material_id"].toInt();
+    }
+}
+
+BaseEditorItem* BaseEditorItem::createFromJson(const QJsonObject &json)
+{
+    QString className = json["class_type"].toString();
+    BaseEditorItem *item = nullptr;
+
+    if (className == "WallItem") item = new WallItem(QPointF(0,0));
+    else if (className == "FoundationBlockItem") item = new FoundationBlockItem(200, 160);
+    else if (className == "ObjectItem") item = new ObjectItem();
+    else if (className == "WindowItem") item = new WindowItem();
+    else if (className == "DoorItem") item = new DoorItem();
+    else if (className == "FloorItem") item = new FloorItem();
+    else if (className == "DimensionItem") item = new DimensionItem();
+    else if (className == "NodeItem") item = new NodeItem(QPointF(0,0));
+    else if (className == "TextItem") item = new TextItem();
+    else if (className == "RoofItem") item = new RoofItem();
+
+    if (item) {
+        item->fromJson(json);
+    }
+    return item;
 }

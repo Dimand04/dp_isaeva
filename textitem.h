@@ -30,6 +30,9 @@ public:
 
     int vertexAt(const QPointF &localPos) const;
 
+    QJsonObject toJson() const override;
+    void fromJson(const QJsonObject &json) override;
+
 protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;

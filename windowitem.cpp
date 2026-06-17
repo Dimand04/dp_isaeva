@@ -300,3 +300,51 @@ void WindowItem::setDistanceFromStart(qreal distanceMeters)
         setPos(p1_offset.x() + t * dx, p1_offset.y() + t * dy);
     }
 }
+
+QJsonObject WindowItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+
+    json["width"] = m_width;
+    json["depth"] = m_depth;
+    json["elevation"] = m_elevation;
+    json["distance"] = m_distance;
+    json["profile_type"] = m_profileType;
+
+    json["height"] = height();
+
+    if (m_hostWall) {
+        json["host_wall_name"] = m_hostWall->name();
+    }
+    return json;
+}
+
+void WindowItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+
+    m_width = json["width"].toDouble();
+    m_depth = json["depth"].toDouble();
+    m_elevation = json["elevation"].toDouble();
+    m_distance = json["distance"].toDouble();
+    m_profileType = json["profile_type"].toInt();
+
+    if (json.contains("height")) {
+        setHeight(json["height"].toDouble());
+    }
+
+    QString hostWallName = json["host_wall_name"].toString();
+    if (scene() && !hostWallName.isEmpty()) {
+        for (QGraphicsItem *item : scene()->items()) {
+            if (WallItem *wall = dynamic_cast<WallItem*>(item)) {
+                if (wall->name() == hostWallName) {
+                    m_hostWall = wall;
+                    updateGeometryToWall();
+                    break;
+                }
+            }
+        }
+    }
+
+    update();
+}

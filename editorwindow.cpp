@@ -10,6 +10,15 @@
 #include "textitem.h"
 #include <QInputDialog>
 #include "roofitem.h"
+#include "objectitem.h"
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QFile>
+#include <QDir>
+#include "filestoragemanager.h"
+#include <QMessageBox>
+#include <QButtonGroup>
 
 EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     QMainWindow(parent),
@@ -23,10 +32,24 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
 
     m_scene = new EditorScene(this);
     ui->graphicsView->setScene(m_scene);
-
     ui->graphicsView->centerOn(0, 0);
 
     ui->stackedWidget->setCurrentIndex(0);
+
+    QButtonGroup *toolButtonGroup = new QButtonGroup(this);
+    toolButtonGroup->setExclusive(true);
+
+    toolButtonGroup->addButton(ui->pb_tool_cursor);
+    toolButtonGroup->addButton(ui->pb_tool_foundation);
+    toolButtonGroup->addButton(ui->pb_tool_wall);
+    toolButtonGroup->addButton(ui->pb_tool_node);
+    toolButtonGroup->addButton(ui->pb_tool_window);
+    toolButtonGroup->addButton(ui->pb_tool_door);
+    toolButtonGroup->addButton(ui->pb_tool_floor);
+    toolButtonGroup->addButton(ui->pb_tool_dimension);
+    toolButtonGroup->addButton(ui->pb_tool_text);
+    toolButtonGroup->addButton(ui->pb_tool_roof);
+    toolButtonGroup->addButton(ui->pb_tool_object);
 
     connect(ui->pb_tool_cursor, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
     connect(ui->pb_tool_foundation, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
@@ -36,61 +59,67 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->pb_tool_door, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
     connect(ui->pb_tool_floor, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
     connect(ui->pb_tool_dimension, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+    connect(ui->pb_tool_text, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+    connect(ui->pb_tool_roof, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
 
     connect(m_scene, &QGraphicsScene::selectionChanged, this, &EditorWindow::onSelectionChanged);
 
-    connect(ui->sb_found_width, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onFoundationPropertyChanged);
-    connect(ui->sb_found_height, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onFoundationPropertyChanged);
-    connect(ui->sb_wall_length, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onWallPropertyChanged);
-    connect(ui->sb_wall_thickness, &QDoubleSpinBox::editingFinished, this, &EditorWindow::onWallPropertyChanged);
+    connect(ui->sb_found_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onFoundationPropertyChanged);
+    connect(ui->sb_found_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onFoundationPropertyChanged);
+    connect(ui->sb_object_found_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onFoundationPropertyChanged);
+    connect(ui->sb_found_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onFoundationPropertyChanged);
 
-    connect(ui->sb_found_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &EditorWindow::onFoundationPropertyChanged);
+    connect(ui->sb_wall_length, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWallPropertyChanged);
+    connect(ui->sb_wall_thickness, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWallPropertyChanged);
+    connect(ui->sb_wall_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWallPropertyChanged);
+    connect(ui->sb_wall_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWallPropertyChanged);
+    connect(ui->cb_wall_alignment, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onWallPropertyChanged);
 
-    connect(ui->sb_wall_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &EditorWindow::onWallPropertyChanged);
+    connect(ui->sb_window_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->sb_window_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->sb_window_elevation, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->sb_window_distance, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->cb_window_profile, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onWindowPropertyChanged);
 
-    connect(ui->sb_window_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->sb_door_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onDoorPropertyChanged);
+    connect(ui->sb_door_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onDoorPropertyChanged);
+    connect(ui->sb_door_distance, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onDoorPropertyChanged);
+    connect(ui->cb_door_swing, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onDoorPropertyChanged);
 
-    connect(ui->sb_window_elevation, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->sb_floor_thickness, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onFloorPropertyChanged);
 
-    connect(ui->cb_window_profile, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->sb_node_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
+    connect(ui->sb_node_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
+    connect(ui->sb_node_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
+    connect(ui->cb_node_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onNodePropertyChanged);
 
-    connect(ui->sb_window_distance, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->cb_dim_side, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onDimensionPropertyChanged);
+    connect(ui->le_text_content, &QLineEdit::textEdited, this, &EditorWindow::onTextPropertyChanged);
+    connect(ui->sb_text_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onTextPropertyChanged);
 
-    connect(ui->sb_door_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &EditorWindow::onDoorPropertyChanged);
+    connect(ui->cb_roof_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onRoofPropertyChanged);
+    connect(ui->sb_roof_overhang, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onRoofPropertyChanged);
+    connect(ui->sb_roof_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onRoofPropertyChanged);
+    connect(ui->sb_roof_thickness, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onRoofPropertyChanged);
 
-    connect(ui->sb_door_distance, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-            this, &EditorWindow::onDoorPropertyChanged);
-
-    connect(ui->cb_door_swing, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &EditorWindow::onDoorPropertyChanged);
-
-    connect(ui->cb_wall_alignment, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &EditorWindow::onWallPropertyChanged);
-
-    connect(ui->cb_dim_side, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &EditorWindow::onDimensionPropertyChanged);
+    connect(ui->le_object_foundation_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
+    connect(ui->le_object_wall_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
+    connect(ui->le_object_window_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
+    connect(ui->le_object_door_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
+    connect(ui->le_object_node_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
+    connect(ui->le_object_floor_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
+    connect(ui->le_object_line_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
+    connect(ui->le_object_text_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
+    connect(ui->le_object_roof_name, &QLineEdit::textEdited, this, [this](const QString &text) { if (m_trackedItem) m_trackedItem->setName(text); });
 
     m_coordLabel = new QLabel("Клетка X: 0 | Y: 0", this);
     ui->statusBar->addPermanentWidget(m_coordLabel);
 
     connect(m_scene, &EditorScene::cursorMoved, this, [this](const QPointF &pos) {
         if (m_coordLabel) {
-            m_coordLabel->setText(QString("X: %1   Y: %2")
-                                      .arg(qRound(pos.x()))
-                                      .arg(qRound(pos.y())));
+            m_coordLabel->setText(QString("X: %1   Y: %2").arg(qRound(pos.x())).arg(qRound(pos.y())));
         }
     });
-
-    connect(ui->pb_tool_text, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
-
-    connect(ui->le_text_content, &QLineEdit::textEdited, this, &EditorWindow::onTextPropertyChanged);
 
     connect(m_scene, &EditorScene::toolModeChanged, this, [this](ToolMode mode) {
         ui->pb_tool_cursor->setChecked(mode == ModeCursor);
@@ -103,59 +132,19 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
         ui->pb_tool_dimension->setChecked(mode == ModeDimension);
         ui->pb_tool_text->setChecked(mode == ModeText);
         ui->pb_tool_roof->setChecked(mode == ModeRoof);
-    });
-
-    connect(ui->sb_node_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
-    connect(ui->sb_node_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
-    connect(ui->sb_node_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onNodePropertyChanged);
-    connect(ui->cb_node_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onNodePropertyChanged);
-
-    connect(ui->le_object_foundation_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
-    });
-
-    connect(ui->le_object_wall_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
-    });
-
-    connect(ui->le_object_window_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
-    });
-
-    connect(ui->le_object_door_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
-    });
-
-    connect(ui->le_object_node_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
-    });
-
-    connect(ui->le_object_floor_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
-    });
-
-    connect(ui->le_object_line_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
-    });
-
-    connect(ui->le_object_text_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
+        ui->pb_tool_object->setChecked(mode == ModeObject);
     });
 
     connect(ui->sb_workspace_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
         m_scene->setWorkspaceSize(val, ui->sb_workspace_height->value());
     });
-
     connect(ui->sb_workspace_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
         m_scene->setWorkspaceSize(ui->sb_workspace_width->value(), val);
     });
 
-    connect(ui->sb_text_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onTextPropertyChanged);
-
     m_treeModel = new QStandardItemModel(this);
     m_treeModel->setHorizontalHeaderLabels(QStringList() << "Элемент" << "Слой" << "Этаж");
     ui->objectTreeView->setModel(m_treeModel);
-
     ui->objectTreeView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->objectTreeView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
@@ -165,9 +154,7 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->cb_active_floor, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
         QString text = ui->cb_active_floor->currentText();
         text.remove("Этаж ");
-        int levelId = text.toInt();
-
-        if (m_scene) m_scene->setActiveLevel(levelId);
+        if (m_scene) m_scene->setActiveLevel(text.toInt());
     });
 
     connect(ui->cb_active_layer, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
@@ -177,7 +164,6 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->btn_add_floor, &QPushButton::clicked, this, [this]() {
         int currentCount = ui->cb_active_floor->count();
         int newLevelId = currentCount + 1;
-
         ui->cb_active_floor->addItem(QString("Этаж %1").arg(newLevelId));
         ui->cb_active_floor->setCurrentIndex(currentCount);
     });
@@ -185,7 +171,6 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->btn_add_layer, &QPushButton::clicked, this, [this]() {
         bool ok;
         QString newLayerName = QInputDialog::getText(this, "Новый слой", "Введите название слоя:", QLineEdit::Normal, "", &ok);
-
         if (ok && !newLayerName.isEmpty()) {
             if (ui->cb_active_layer->findText(newLayerName) == -1) {
                 ui->cb_active_layer->addItem(newLayerName);
@@ -198,30 +183,25 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
         if (item->isCheckable()) {
             bool isVisible = (item->checkState() == Qt::Checked);
             QString layerName = item->text();
-
-            if (m_scene) {
-                m_scene->setLayerVisible(layerName, isVisible);
-            }
+            if (m_scene) m_scene->setLayerVisible(layerName, isVisible);
         }
     });
 
-    connect(ui->le_object_roof_name, &QLineEdit::textEdited, this, [this](const QString &text) {
-        if (m_trackedItem) m_trackedItem->setName(text);
-    });
+    connect(ui->le_object_name, &QLineEdit::textEdited, this, &EditorWindow::onObjectPropertyChanged);
+    connect(ui->cb_object_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onObjectPropertyChanged);
+    connect(ui->sb_object_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onObjectPropertyChanged);
+    connect(ui->sb_object_length, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onObjectPropertyChanged);
+    connect(ui->sb_object_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onObjectPropertyChanged);
+    connect(ui->pb_tool_object, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
 
-    connect(ui->cb_roof_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onRoofPropertyChanged);
-    connect(ui->sb_roof_overhang, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onRoofPropertyChanged);
-    connect(ui->sb_roof_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onRoofPropertyChanged);
+    connect(ui->action_saveProject, &QAction::triggered, this, &EditorWindow::saveProject);
 
-    connect(ui->pb_tool_roof, &QPushButton::clicked, this, &EditorWindow::onToolButtonClicked);
+    loadProject();
 }
 
 EditorWindow::~EditorWindow()
 {
-    if (m_scene) {
-        m_scene->disconnect(this);
-    }
-
+    if (m_scene) m_scene->disconnect(this);
     delete ui;
 }
 
@@ -230,27 +210,17 @@ void EditorWindow::onToolButtonClicked()
     QPushButton *button = qobject_cast<QPushButton*>(sender());
     if (!button) return;
 
-    if (button == ui->pb_tool_cursor) {
-        m_scene->setToolMode(ModeCursor);
-    } else if (button == ui->pb_tool_foundation) {
-        m_scene->setToolMode(ModeFoundation);
-    } else if (button == ui->pb_tool_wall) {
-        m_scene->setToolMode(ModeWall);
-    } else if (button == ui->pb_tool_node) {
-        m_scene->setToolMode(ModeNode);
-    } else if (button == ui->pb_tool_window) {
-        m_scene->setToolMode(ModeWindow);
-    } else if (button == ui->pb_tool_door) {
-        m_scene->setToolMode(ModeDoor);
-    } else if (button == ui->pb_tool_floor) {
-        m_scene->setToolMode(ModeFloor);
-    } else if (button == ui->pb_tool_dimension) {
-        m_scene->setToolMode(ModeDimension);
-    } else if (button == ui->pb_tool_text) {
-        m_scene->setToolMode(ModeText);
-    } else if (button == ui->pb_tool_roof) {
-        m_scene->setToolMode(ModeRoof);
-    }
+    if (button == ui->pb_tool_cursor) m_scene->setToolMode(ModeCursor);
+    else if (button == ui->pb_tool_foundation) m_scene->setToolMode(ModeFoundation);
+    else if (button == ui->pb_tool_wall) m_scene->setToolMode(ModeWall);
+    else if (button == ui->pb_tool_node) m_scene->setToolMode(ModeNode);
+    else if (button == ui->pb_tool_window) m_scene->setToolMode(ModeWindow);
+    else if (button == ui->pb_tool_door) m_scene->setToolMode(ModeDoor);
+    else if (button == ui->pb_tool_floor) m_scene->setToolMode(ModeFloor);
+    else if (button == ui->pb_tool_dimension) m_scene->setToolMode(ModeDimension);
+    else if (button == ui->pb_tool_text) m_scene->setToolMode(ModeText);
+    else if (button == ui->pb_tool_roof) m_scene->setToolMode(ModeRoof);
+    else if (button == ui->pb_tool_object) m_scene->setToolMode(ModeObject);
 }
 
 void EditorWindow::onSelectionChanged()
@@ -271,7 +241,6 @@ void EditorWindow::onSelectionChanged()
         ui->sb_workspace_height->setValue(m_scene->workspaceSize().height());
         ui->sb_workspace_width->blockSignals(false);
         ui->sb_workspace_height->blockSignals(false);
-
         return;
     }
 
@@ -287,17 +256,22 @@ void EditorWindow::onSelectionChanged()
             ui->le_object_foundation_name->blockSignals(true);
             ui->sb_found_width->blockSignals(true);
             ui->sb_found_height->blockSignals(true);
+            ui->sb_object_found_height->blockSignals(true);
             ui->sb_found_angle->blockSignals(true);
 
             ui->le_object_foundation_name->setText(block->name());
             ui->sb_found_width->setValue(block->widthInMeters());
-            ui->sb_found_height->setValue(block->heightInMeters());
+            ui->sb_found_height->setValue(block->lengthInMeters());
+            ui->sb_object_found_height->setValue(block->height());
             ui->sb_found_angle->setValue(block->rotation());
-            ui->lbl_found_area->setText(QString("Площадь: %1 м²").arg(block->area(), 0, 'f', 2));
+            ui->lbl_found_area->setText(QString("Площадь: %1 м² | Объем бетона: %2 м³")
+                                            .arg(block->area(), 0, 'f', 2)
+                                            .arg(block->volume(), 0, 'f', 2));
 
             ui->le_object_foundation_name->blockSignals(false);
             ui->sb_found_width->blockSignals(false);
             ui->sb_found_height->blockSignals(false);
+            ui->sb_object_found_height->blockSignals(false);
             ui->sb_found_angle->blockSignals(false);
         };
 
@@ -311,19 +285,25 @@ void EditorWindow::onSelectionChanged()
             ui->le_object_wall_name->blockSignals(true);
             ui->sb_wall_length->blockSignals(true);
             ui->sb_wall_thickness->blockSignals(true);
+            ui->sb_wall_height->blockSignals(true);
             ui->sb_wall_angle->blockSignals(true);
             ui->cb_wall_alignment->blockSignals(true);
 
             ui->le_object_wall_name->setText(wall->name());
             ui->sb_wall_length->setValue(wall->lengthInMeters());
             ui->sb_wall_thickness->setValue(wall->thicknessInMm());
+            ui->sb_wall_height->setValue(wall->height());
             ui->sb_wall_angle->setValue(wall->angleInDegrees());
             ui->cb_wall_alignment->setCurrentIndex(wall->alignment());
-            ui->lbl_wall_area->setText(QString("Чистая площадь: %1 м²").arg(wall->netArea(), 0, 'f', 2));
+
+            ui->lbl_wall_area->setText(QString("Площадь: %1 м² | Объем: %2 м³")
+                                           .arg(wall->netSurfaceArea(), 0, 'f', 2)
+                                           .arg(wall->netVolume(), 0, 'f', 2));
 
             ui->le_object_wall_name->blockSignals(false);
             ui->sb_wall_length->blockSignals(false);
             ui->sb_wall_thickness->blockSignals(false);
+            ui->sb_wall_height->blockSignals(false);
             ui->sb_wall_angle->blockSignals(false);
             ui->cb_wall_alignment->blockSignals(false);
         };
@@ -337,12 +317,14 @@ void EditorWindow::onSelectionChanged()
         auto updateUI = [this, window]() {
             ui->le_object_window_name->blockSignals(true);
             ui->sb_window_width->blockSignals(true);
+            ui->sb_window_height->blockSignals(true);
             ui->sb_window_elevation->blockSignals(true);
             ui->cb_window_profile->blockSignals(true);
             ui->sb_window_distance->blockSignals(true);
 
             ui->le_object_window_name->setText(window->name());
             ui->sb_window_width->setValue(window->widthInMeters());
+            ui->sb_window_height->setValue(window->height());
             ui->sb_window_elevation->setValue(window->elevation());
             ui->cb_window_profile->setCurrentIndex(window->profileType());
             ui->sb_window_distance->setValue(window->distanceFromStart());
@@ -350,6 +332,7 @@ void EditorWindow::onSelectionChanged()
 
             ui->le_object_window_name->blockSignals(false);
             ui->sb_window_width->blockSignals(false);
+            ui->sb_window_height->blockSignals(false);
             ui->sb_window_elevation->blockSignals(false);
             ui->cb_window_profile->blockSignals(false);
             ui->sb_window_distance->blockSignals(false);
@@ -364,17 +347,20 @@ void EditorWindow::onSelectionChanged()
         auto updateUI = [this, door]() {
             ui->le_object_door_name->blockSignals(true);
             ui->sb_door_width->blockSignals(true);
+            ui->sb_door_height->blockSignals(true);
             ui->sb_door_distance->blockSignals(true);
             ui->cb_door_swing->blockSignals(true);
 
             ui->le_object_door_name->setText(door->name());
             ui->sb_door_width->setValue(door->widthInMeters());
+            ui->sb_door_height->setValue(door->height());
             ui->sb_door_distance->setValue(door->distanceFromStart());
             ui->cb_door_swing->setCurrentIndex(door->swingType());
             ui->lbl_door_area->setText(QString("Площадь проема: %1 м²").arg(door->area(), 0, 'f', 2));
 
             ui->le_object_door_name->blockSignals(false);
             ui->sb_door_width->blockSignals(false);
+            ui->sb_door_height->blockSignals(false);
             ui->sb_door_distance->blockSignals(false);
             ui->cb_door_swing->blockSignals(false);
         };
@@ -399,6 +385,8 @@ void EditorWindow::onSelectionChanged()
             ui->cb_node_type->setCurrentIndex(node->isRounded());
             ui->lbl_node_area->setText(QString("Площадь: %1 м²").arg(node->area(), 0, 'f', 4));
 
+            ui->lbl_node_height->setText(QString("%1 м").arg(node->maxAttachedWallHeight(), 0, 'f', 2));
+
             ui->le_object_node_name->blockSignals(false);
             ui->sb_node_width->blockSignals(false);
             ui->sb_node_height->blockSignals(false);
@@ -414,9 +402,16 @@ void EditorWindow::onSelectionChanged()
 
         auto updateUI = [this, floor]() {
             ui->le_object_floor_name->blockSignals(true);
+            ui->sb_floor_thickness->blockSignals(true);
+
             ui->le_object_floor_name->setText(floor->name());
-            ui->lbl_floor_area->setText(QString("Площадь пола: %1 м²").arg(floor->area(), 0, 'f', 2));
+            ui->sb_floor_thickness->setValue(floor->height());
+            ui->lbl_floor_area->setText(QString("Площадь: %1 м² | Объем бетона: %2 м³")
+                                            .arg(floor->area(), 0, 'f', 2)
+                                            .arg(floor->volume(), 0, 'f', 2));
+
             ui->le_object_floor_name->blockSignals(false);
+            ui->sb_floor_thickness->blockSignals(false);
         };
 
         updateUI();
@@ -470,10 +465,12 @@ void EditorWindow::onSelectionChanged()
             ui->cb_roof_type->blockSignals(true);
             ui->sb_roof_overhang->blockSignals(true);
             ui->sb_roof_angle->blockSignals(true);
+            ui->sb_roof_thickness->blockSignals(true);
 
             ui->le_object_roof_name->setText(roof->name());
             ui->cb_roof_type->setCurrentIndex(roof->roofType());
             ui->sb_roof_overhang->setValue(roof->overhang());
+            ui->sb_roof_thickness->setValue(roof->height());
 
             if (roof->roofType() == RoofItem::Flat) {
                 ui->sb_roof_angle->setValue(0);
@@ -483,12 +480,40 @@ void EditorWindow::onSelectionChanged()
                 ui->sb_roof_angle->setEnabled(true);
             }
 
-            ui->lbl_roof_area->setText(QString("Площадь: %1 м²").arg(roof->area(), 0, 'f', 2));
+            ui->lbl_roof_area->setText(QString("Площадь: %1 м² | Объем: %2 м³")
+                                           .arg(roof->area(), 0, 'f', 2)
+                                           .arg(roof->volume(), 0, 'f', 2));
 
             ui->le_object_roof_name->blockSignals(false);
             ui->cb_roof_type->blockSignals(false);
             ui->sb_roof_overhang->blockSignals(false);
             ui->sb_roof_angle->blockSignals(false);
+            ui->sb_roof_thickness->blockSignals(false);
+        };
+
+        updateUI();
+        connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
+    } else if (ObjectItem *obj = dynamic_cast<ObjectItem*>(item)) {
+        ui->stackedWidget->setCurrentIndex(10);
+
+        auto updateUI = [this, obj]() {
+            ui->le_object_name->blockSignals(true);
+            ui->cb_object_type->blockSignals(true);
+            ui->sb_object_width->blockSignals(true);
+            ui->sb_object_length->blockSignals(true);
+            ui->sb_object_angle->blockSignals(true);
+
+            ui->le_object_name->setText(obj->name());
+            ui->cb_object_type->setCurrentIndex(obj->objectType());
+            ui->sb_object_width->setValue(obj->widthInMeters());
+            ui->sb_object_length->setValue(obj->lengthInMeters());
+            ui->sb_object_angle->setValue(obj->rotation());
+
+            ui->le_object_name->blockSignals(false);
+            ui->cb_object_type->blockSignals(false);
+            ui->sb_object_width->blockSignals(false);
+            ui->sb_object_length->blockSignals(false);
+            ui->sb_object_angle->blockSignals(false);
         };
 
         updateUI();
@@ -500,12 +525,21 @@ void EditorWindow::onFoundationPropertyChanged()
 {
     if (m_trackedItem) {
         if (FoundationBlockItem *block = dynamic_cast<FoundationBlockItem*>(m_trackedItem)) {
-            QString newName = ui->le_object_foundation_name->text();
-            if (block->name() != newName) block->setName(newName);
 
-            block->setWidthInMeters(ui->sb_found_width->value());
-            block->setHeightInMeters(ui->sb_found_height->value());
-            block->setRotation(ui->sb_found_angle->value());
+            QString newName = ui->le_object_foundation_name->text();
+            double newWidth = ui->sb_found_width->value();
+
+            double newLength = ui->sb_found_height->value();
+
+            double newDepth = ui->sb_object_found_height->value();
+
+            double newAngle = ui->sb_found_angle->value();
+
+            if (block->name() != newName) block->setName(newName);
+            block->setWidthInMeters(newWidth);
+            block->setLengthInMeters(newLength);
+            block->setHeight(newDepth);
+            block->setRotation(newAngle);
         }
     }
 }
@@ -515,17 +549,18 @@ void EditorWindow::onWallPropertyChanged()
     if (m_trackedItem) {
         if (WallItem *wall = dynamic_cast<WallItem*>(m_trackedItem)) {
             QString newName = ui->le_object_wall_name->text();
+            double newLength = ui->sb_wall_length->value();
+            double newThickness = ui->sb_wall_thickness->value();
+            double newHeight = ui->sb_wall_height->value();
+            double newAngle = ui->sb_wall_angle->value();
+            int newAlignment = ui->cb_wall_alignment->currentIndex();
+
             if (wall->name() != newName) wall->setName(newName);
-
-            double length = ui->sb_wall_length->value();
-            double thickness = ui->sb_wall_thickness->value();
-            double angle = ui->sb_wall_angle->value();
-            int alignment = ui->cb_wall_alignment->currentIndex();
-
-            wall->setLengthInMeters(length);
-            wall->setThicknessInMm(thickness);
-            wall->setAngleInDegrees(angle);
-            wall->setAlignment(alignment);
+            wall->setLengthInMeters(newLength);
+            wall->setThicknessInMm(newThickness);
+            wall->setHeight(newHeight);
+            wall->setAngleInDegrees(newAngle);
+            wall->setAlignment(newAlignment);
         }
     }
 }
@@ -537,15 +572,11 @@ void EditorWindow::onWindowPropertyChanged()
             QString newName = ui->le_object_window_name->text();
             if (window->name() != newName) window->setName(newName);
 
-            double width = ui->sb_window_width->value();
-            double elevation = ui->sb_window_elevation->value();
-            int profile = ui->cb_window_profile->currentIndex();
-            double distance = ui->sb_window_distance->value();
-
-            window->setWidthInMeters(width);
-            window->setElevation(elevation);
-            window->setProfileType(profile);
-            window->setDistanceFromStart(distance);
+            window->setWidthInMeters(ui->sb_window_width->value());
+            window->setHeight(ui->sb_window_height->value());
+            window->setElevation(ui->sb_window_elevation->value());
+            window->setProfileType(ui->cb_window_profile->currentIndex());
+            window->setDistanceFromStart(ui->sb_window_distance->value());
         }
     }
 }
@@ -557,13 +588,10 @@ void EditorWindow::onDoorPropertyChanged()
             QString newName = ui->le_object_door_name->text();
             if (door->name() != newName) door->setName(newName);
 
-            double width = ui->sb_door_width->value();
-            double distance = ui->sb_door_distance->value();
-            int swingType = ui->cb_door_swing->currentIndex();
-
-            door->setWidthInMeters(width);
-            door->setDistanceFromStart(distance);
-            door->setSwingType(swingType);
+            door->setWidthInMeters(ui->sb_door_width->value());
+            door->setHeight(ui->sb_door_height->value());
+            door->setDistanceFromStart(ui->sb_door_distance->value());
+            door->setSwingType(ui->cb_door_swing->currentIndex());
         }
     }
 }
@@ -590,8 +618,7 @@ void EditorWindow::onDimensionPropertyChanged()
             QString newName = ui->le_object_line_name->text();
             if (dim->name() != newName) dim->setName(newName);
 
-            int side = ui->cb_dim_side->currentIndex();
-            dim->setTextSide(side);
+            dim->setTextSide(ui->cb_dim_side->currentIndex());
         }
     }
 }
@@ -602,6 +629,8 @@ void EditorWindow::onFloorPropertyChanged()
         if (FloorItem *floor = dynamic_cast<FloorItem*>(m_trackedItem)) {
             QString newName = ui->le_object_floor_name->text();
             if (floor->name() != newName) floor->setName(newName);
+
+            floor->setHeight(ui->sb_floor_thickness->value());
         }
     }
 }
@@ -616,6 +645,36 @@ void EditorWindow::onTextPropertyChanged()
             textItem->setTextContent(ui->le_text_content->text());
             textItem->setFontSize(ui->sb_text_size->value());
             textItem->setRotationAngle(ui->sb_text_angle->value());
+        }
+    }
+}
+
+void EditorWindow::onRoofPropertyChanged()
+{
+    if (m_trackedItem) {
+        if (RoofItem *roof = dynamic_cast<RoofItem*>(m_trackedItem)) {
+
+            QString newName = ui->le_object_roof_name->text();
+            int newType = ui->cb_roof_type->currentIndex();
+            double newOverhang = ui->sb_roof_overhang->value();
+            double newAngle = ui->sb_roof_angle->value();
+            double newThickness = ui->sb_roof_thickness->value();
+
+            if (newType == RoofItem::Flat) {
+                newAngle = 0.0;
+                ui->sb_roof_angle->blockSignals(true);
+                ui->sb_roof_angle->setValue(0);
+                ui->sb_roof_angle->setEnabled(false);
+                ui->sb_roof_angle->blockSignals(false);
+            } else {
+                ui->sb_roof_angle->setEnabled(true);
+            }
+
+            if (roof->name() != newName) roof->setName(newName);
+            roof->setRoofType(newType);
+            roof->setOverhang(newOverhang);
+            roof->setAngle(newAngle);
+            roof->setHeight(newThickness);
         }
     }
 }
@@ -726,28 +785,168 @@ QStandardItem* EditorWindow::getOrCreateLayerNode(int levelId, const QString &la
     return layerNode;
 }
 
-void EditorWindow::onRoofPropertyChanged()
+void EditorWindow::onObjectPropertyChanged()
 {
     if (m_trackedItem) {
-        if (RoofItem *roof = dynamic_cast<RoofItem*>(m_trackedItem)) {
-            QString newName = ui->le_object_roof_name->text();
-            if (roof->name() != newName) roof->setName(newName);
+        if (ObjectItem *obj = dynamic_cast<ObjectItem*>(m_trackedItem)) {
 
-            int newType = ui->cb_roof_type->currentIndex();
-            roof->setRoofType(newType);
+            QString newName = ui->le_object_name->text();
+            int newType = ui->cb_object_type->currentIndex();
+            double newWidth = ui->sb_object_width->value();
+            double newLength = ui->sb_object_length->value();
+            double newAngle = ui->sb_object_angle->value();
 
-            if (newType == RoofItem::Flat) {
-                ui->sb_roof_angle->blockSignals(true);
-                ui->sb_roof_angle->setValue(0);
-                ui->sb_roof_angle->setEnabled(false);
-                ui->sb_roof_angle->blockSignals(false);
-                roof->setAngle(0);
-            } else {
-                ui->sb_roof_angle->setEnabled(true);
-                roof->setAngle(ui->sb_roof_angle->value());
+            if (obj->name() != newName) obj->setName(newName);
+            obj->setObjectType(newType);
+            obj->setWidthInMeters(newWidth);
+            obj->setLengthInMeters(newLength);
+
+            if (qAbs(obj->rotation() - newAngle) > 0.01) {
+                obj->setRotation(newAngle);
+            }
+        }
+    }
+}
+
+void EditorWindow::saveProject()
+{
+    QString folderPath = FileStorageManager::getProjectFolder(m_projectId);
+    QString filePath = folderPath + "/layout.json";
+
+    QJsonArray itemsArray;
+
+    for (QGraphicsItem *gItem : m_scene->items()) {
+        if (BaseEditorItem *item = dynamic_cast<BaseEditorItem*>(gItem)) {
+            if (FloorItem *floor = dynamic_cast<FloorItem*>(item)) {
+                if (floor->isDrawing()) continue;
+            }
+            if (RoofItem *roof = dynamic_cast<RoofItem*>(item)) {
+                if (roof->isDrawing()) continue;
+            }
+            if (DimensionItem *dim = dynamic_cast<DimensionItem*>(item)) {
+                if (dim->isDrawing()) continue;
             }
 
-            roof->setOverhang(ui->sb_roof_overhang->value());
+            itemsArray.append(item->toJson());
+        }
+    }
+
+    QJsonObject rootObject;
+    rootObject["version"] = "1.0";
+    rootObject["items"] = itemsArray;
+
+    rootObject["workspace_w"] = m_scene->sceneRect().width();
+    rootObject["workspace_h"] = m_scene->sceneRect().height();
+
+    QJsonDocument doc(rootObject);
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(doc.toJson(QJsonDocument::Indented));
+        file.close();
+        QMessageBox::information(this, "Сохранение", "Проект успешно сохранен!");
+    } else {
+        QMessageBox::critical(this, "Ошибка", "Не удалось записать файл проекта.");
+    }
+}
+
+void EditorWindow::loadProject()
+{
+    QString folderPath = FileStorageManager::getProjectFolder(m_projectId);
+    QString filePath = folderPath + "/layout.json";
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return;
+    }
+
+    QByteArray data = file.readAll();
+    file.close();
+
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isObject()) return;
+
+    QJsonObject rootObject = doc.object();
+
+    if (rootObject.contains("workspace_w") && rootObject.contains("workspace_h")) {
+        m_scene->setSceneRect(0, 0, rootObject["workspace_w"].toDouble(), rootObject["workspace_h"].toDouble());
+    }
+
+    QJsonArray itemsArray = rootObject["items"].toArray();
+
+    m_scene->clearSelection();
+    for (QGraphicsItem *item : m_scene->items()) {
+        m_scene->removeItem(item);
+        delete item;
+    }
+    m_treeModel->removeRows(0, m_treeModel->rowCount());
+
+    for (const QJsonValue &value : itemsArray) {
+        QJsonObject itemObj = value.toObject();
+        if (BaseEditorItem *newItem = BaseEditorItem::createFromJson(itemObj)) {
+            m_scene->addItem(newItem);
+            emit m_scene->itemAdded(newItem);
+        }
+    }
+
+    QSet<int> uniqueLevels;
+    QSet<QString> uniqueLayers;
+
+    for (QGraphicsItem *item : m_scene->items()) {
+        if (BaseEditorItem *bItem = dynamic_cast<BaseEditorItem*>(item)) {
+            uniqueLevels.insert(bItem->levelId());
+            uniqueLayers.insert(bItem->layerName());
+        }
+    }
+
+    ui->cb_active_floor->blockSignals(true);
+    ui->cb_active_floor->clear();
+    QList<int> sortedLevels = uniqueLevels.values();
+    std::sort(sortedLevels.begin(), sortedLevels.end());
+    for (int level : sortedLevels) {
+        ui->cb_active_floor->addItem(QString("Этаж %1").arg(level));
+    }
+    ui->cb_active_floor->setCurrentIndex(0);
+    m_scene->setActiveLevel(sortedLevels.isEmpty() ? 1 : sortedLevels.first());
+    ui->cb_active_floor->blockSignals(false);
+
+    ui->cb_active_layer->blockSignals(true);
+    ui->cb_active_layer->clear();
+    for (const QString &layer : uniqueLayers) {
+        ui->cb_active_layer->addItem(layer);
+    }
+    ui->cb_active_layer->setCurrentIndex(0);
+    m_scene->setActiveLayer(uniqueLayers.isEmpty() ? "Основной" : *uniqueLayers.begin());
+    ui->cb_active_layer->blockSignals(false);
+
+    m_scene->updateItemsVisibility();
+
+    for (const QJsonValue &value : itemsArray) {
+        QJsonObject itemObj = value.toObject();
+        QString hostWallName = itemObj["host_wall_name"].toString();
+        QString itemName = itemObj["name"].toString();
+
+        if (!hostWallName.isEmpty()) {
+            WallItem *foundWall = nullptr;
+            BaseEditorItem *targetItem = nullptr;
+
+            for (QGraphicsItem *item : m_scene->items()) {
+                if (WallItem *w = dynamic_cast<WallItem*>(item)) {
+                    if (w->name() == hostWallName) foundWall = w;
+                }
+                if (BaseEditorItem *b = dynamic_cast<BaseEditorItem*>(item)) {
+                    if (b->name() == itemName) targetItem = b;
+                }
+            }
+
+            if (foundWall && targetItem) {
+                if (WindowItem *win = dynamic_cast<WindowItem*>(targetItem)) {
+                    win->setHostWall(foundWall);
+                    win->updateGeometryToWall();
+                } else if (DoorItem *door = dynamic_cast<DoorItem*>(targetItem)) {
+                    door->setHostWall(foundWall);
+                    door->updateGeometryToWall();
+                }
+            }
         }
     }
 }

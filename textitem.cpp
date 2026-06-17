@@ -5,6 +5,7 @@
 #include <QtMath>
 #include <QCursor>
 #include <QGraphicsSceneHoverEvent>
+#include <QJsonObject>
 
 TextItem::TextItem(QGraphicsItem *parent)
     : BaseEditorItem(parent), m_textContent("Текст"), m_fontSize(14), m_textColor(Qt::black), m_dragIndex(-1), m_state(StateNone)
@@ -247,4 +248,29 @@ void TextItem::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
         setCursor(Qt::ArrowCursor);
     }
     BaseEditorItem::hoverMoveEvent(event);
+}
+
+QJsonObject TextItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+
+    json["text_content"] = m_textContent;
+    json["font_size"] = m_fontSize;
+    json["text_color"] = m_textColor.name(QColor::HexArgb);
+    json["rotation_angle"] = rotation();
+
+    return json;
+}
+
+void TextItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+
+    m_textContent = json["text_content"].toString();
+    m_fontSize = json["font_size"].toInt();
+    m_textColor.setNamedColor(json["text_color"].toString());
+
+    setRotation(json["rotation_angle"].toDouble());
+
+    update();
 }

@@ -6,6 +6,7 @@
 #include <QBrush>
 #include <QtMath>
 #include <QGraphicsScene>
+#include <QJsonObject>
 
 DoorItem::DoorItem(QGraphicsItem *parent)
     : BaseEditorItem(parent), m_hostWall(nullptr), m_width(90.0), m_depth(20.0),
@@ -103,10 +104,7 @@ qreal DoorItem::distanceFromStart() const { return m_distance; }
 
 qreal DoorItem::area() const
 {
-    if (m_hostWall) {
-        return widthInMeters() * (m_hostWall->thicknessInMm() / 1000.0);
-    }
-    return 0.0;
+    return widthInMeters() * height();
 }
 
 QPointF DoorItem::snapPosition(const QPointF &pos) const
@@ -307,4 +305,45 @@ void DoorItem::setDistanceFromStart(qreal distanceMeters)
         qreal t = targetPx / lengthPx;
         setPos(p1_offset.x() + t * dx, p1_offset.y() + t * dy);
     }
+}
+
+QJsonObject DoorItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+
+    json["width"] = m_width;
+    json["depth"] = m_depth;
+    json["swing_type"] = m_swingType;
+    json["distance"] = m_distance;
+
+    if (m_hostWall) {
+        json["host_wall_name"] = m_hostWall->name();
+    }
+
+    return json;
+}
+
+void DoorItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+
+    m_width = json["width"].toDouble();
+    m_depth = json["depth"].toDouble();
+    m_swingType = json["swing_type"].toInt();
+    m_distance = json["distance"].toDouble();
+
+    QString hostWallName = json["host_wall_name"].toString();
+    if (scene() && !hostWallName.isEmpty()) {
+        for (QGraphicsItem *item : scene()->items()) {
+            if (WallItem *wall = dynamic_cast<WallItem*>(item)) {
+                if (wall->name() == hostWallName) {
+                    m_hostWall = wall;
+                    updateGeometryToWall();
+                    break;
+                }
+            }
+        }
+    }
+
+    update();
 }

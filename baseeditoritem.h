@@ -4,6 +4,7 @@
 #include <QGraphicsObject>
 #include <QGraphicsSceneMouseEvent>
 #include <QVariant>
+#include <QJsonObject>
 
 class BaseEditorItem : public QGraphicsObject
 {
@@ -24,6 +25,15 @@ public:
     virtual void setHeight(qreal height);
     virtual qreal height() const;
 
+    virtual int type() const override { return UserType + 1; }
+    virtual QJsonObject toJson() const;
+    virtual void fromJson(const QJsonObject &json);
+
+    static BaseEditorItem* createFromJson(const QJsonObject &json);
+
+    void setMaterialId(int id) { m_materialId = id; }
+    int materialId() const { return m_materialId; }
+
 protected:
     virtual QPointF snapPosition(const QPointF &pos) const;
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
@@ -37,6 +47,7 @@ private:
     int m_levelId;
     QString m_layerName;
     qreal m_height;
+    int m_materialId = -1;
 };
 
 #endif

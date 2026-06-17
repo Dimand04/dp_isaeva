@@ -9,11 +9,13 @@
 #include "windowitem.h"
 #include "dooritem.h"
 #include <QPainter>
+#include <QJsonObject>
 
 WallItem::WallItem(const QPointF &startPoint, QGraphicsItem *parent)
     : BaseEditorItem(parent), m_thickness(20.0), m_isUpdating(false), m_state(WallStateNone)
 {
     setAcceptHoverEvents(true);
+    setZValue(0.5);
     m_line.setP1(QPointF(0, 0));
     m_line.setP2(QPointF(0, 0));
     setPos(startPoint);
@@ -76,6 +78,8 @@ void WallItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 
 void WallItem::setLengthInMeters(qreal lengthMeters)
 {
+    if (qAbs(lengthInMeters() - lengthMeters) < 1e-5) return;
+
     prepareGeometryChange();
     qreal lengthPx = lengthMeters * 100.0;
     qreal angleRad = qDegreesToRadians(m_line.angle());
@@ -89,6 +93,8 @@ void WallItem::setLengthInMeters(qreal lengthMeters)
 
 void WallItem::setThicknessInMm(qreal thicknessMm)
 {
+    if (qAbs(thicknessInMm() - thicknessMm) < 1e-5) return;
+
     prepareGeometryChange();
     m_thickness = thicknessMm * 0.1;
     updatePolygon();
@@ -98,6 +104,8 @@ void WallItem::setThicknessInMm(qreal thicknessMm)
 
 void WallItem::setAngleInDegrees(qreal angleDeg)
 {
+    if (qAbs(angleInDegrees() - angleDeg) < 1e-5) return;
+
     prepareGeometryChange();
     m_line.setAngle(angleDeg);
     updatePolygon();
@@ -345,4 +353,37 @@ qreal WallItem::netSurfaceArea() const
         }
     }
     return qMax(0.0, gross - deductions);
+}
+
+qreal WallItem::netVolume() const
+{
+    return netSurfaceArea() * (thicknessInMm() / 1000.0);
+}
+
+QJsonObject WallItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+
+    json["p1_x"] = m_line.p1().x();
+    json["p1_y"] = m_line.p1().y();
+    json["p2_x"] = m_line.p2().x();
+    json["p2_y"] = m_line.p2().y();
+    json["thickness"] = m_thickness;
+    json["alignment"] = m_alignment;
+
+    return json;
+}
+
+void WallItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+
+    m_line.setP1(QPointF(json["p1_x"].toDouble(), json["p1_y"].toDouble()));
+    m_line.setP2(QPointF(json["p2_x"].toDouble(), json["p2_y"].toDouble()));
+
+    m_thickness = json["thickness"].toDouble();
+    m_alignment = json["alignment"].toInt();
+
+    updatePolygon();
+    update();
 }

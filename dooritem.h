@@ -31,6 +31,9 @@ public:
 
     qreal area() const;
 
+    QJsonObject toJson() const override;
+    void fromJson(const QJsonObject &json) override;
+
 protected:
     QPointF snapPosition(const QPointF &pos) const override;
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;

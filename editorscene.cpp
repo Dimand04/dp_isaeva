@@ -13,6 +13,7 @@
 #include <QSet>
 #include "dimensionitem.h"
 #include "textitem.h"
+#include "objectitem.h"
 
 EditorScene::EditorScene(QObject *parent)
     : QGraphicsScene(parent), m_currentMode(ModeCursor), m_isDrawing(false),
@@ -101,7 +102,6 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         QPointF snappedPos = snapToGrid(event->scenePos());
 
-        // Лямбда для генерации уникального имени
         auto generateUniqueName = [this](const QString &baseName) -> QString {
             int index = 1;
             while (true) {
@@ -143,11 +143,19 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
             return;
         }
         else if (m_currentMode == ModeWindow) {
-            QGraphicsItem *clickedItem = itemAt(event->scenePos(), QTransform());
-            if (WallItem *wall = dynamic_cast<WallItem*>(clickedItem)) {
+            WallItem *targetWall = nullptr;
+            for (QGraphicsItem *item : items(event->scenePos())) {
+                if (WallItem *wall = dynamic_cast<WallItem*>(item)) {
+                    if (wall->levelId() == m_activeLevelId) {
+                        targetWall = wall;
+                        break;
+                    }
+                }
+            }
+            if (targetWall) {
                 WindowItem *window = new WindowItem();
                 window->setName(generateUniqueName("Окно"));
-                window->setHostWall(wall);
+                window->setHostWall(targetWall);
                 window->setWidthInMeters(1.5);
                 window->setLevelId(m_activeLevelId);
                 window->setLayerName(m_activeLayerName);
@@ -158,11 +166,20 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
             return;
         }
         else if (m_currentMode == ModeDoor) {
-            QGraphicsItem *clickedItem = itemAt(event->scenePos(), QTransform());
-            if (WallItem *wall = dynamic_cast<WallItem*>(clickedItem)) {
+            WallItem *targetWall = nullptr;
+            for (QGraphicsItem *item : items(event->scenePos())) {
+                if (WallItem *wall = dynamic_cast<WallItem*>(item)) {
+                    if (wall->levelId() == m_activeLevelId) {
+                        targetWall = wall;
+                        break;
+                    }
+                }
+            }
+
+            if (targetWall) {
                 DoorItem *door = new DoorItem();
                 door->setName(generateUniqueName("Дверь"));
-                door->setHostWall(wall);
+                door->setHostWall(targetWall);
                 door->setWidthInMeters(0.9);
                 door->setLevelId(m_activeLevelId);
                 door->setLayerName(m_activeLayerName);
@@ -239,6 +256,21 @@ void EditorScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
             emit itemAdded(textItem);
             clearSelection();
             textItem->setSelected(true);
+            setToolMode(ModeCursor);
+            return;
+        }
+        else if (m_currentMode == ModeObject) {
+            ObjectItem *obj = new ObjectItem();
+            obj->setName(generateUniqueName("Мебель"));
+            obj->setPos(snappedPos);
+            obj->setLevelId(m_activeLevelId);
+            obj->setLayerName(m_activeLayerName);
+            addItem(obj);
+            emit itemAdded(obj);
+
+            clearSelection();
+            obj->setSelected(true);
+
             setToolMode(ModeCursor);
             return;
         }

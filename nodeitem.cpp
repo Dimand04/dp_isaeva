@@ -5,6 +5,9 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QtMath>
 #include <QPainter>
+#include "wallitem.h"
+#include <QGraphicsScene>
+#include <QJsonObject>
 
 NodeItem::NodeItem(const QPointF &pos, QGraphicsItem *parent)
     : BaseEditorItem(parent), m_width(0.2), m_height(0.2), m_isRounded(0), m_isDragging(false)
@@ -139,4 +142,44 @@ void NodeItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     m_isDragging = false;
     setCursor(Qt::ArrowCursor);
     BaseEditorItem::mouseReleaseEvent(event);
+}
+
+qreal NodeItem::maxAttachedWallHeight() const
+{
+    qreal maxH = 0.0;
+    if (!scene()) return maxH;
+
+    for (QGraphicsItem *item : scene()->collidingItems(this)) {
+        if (WallItem *wall = dynamic_cast<WallItem*>(item)) {
+            if (wall->height() > maxH) {
+                maxH = wall->height();
+            }
+        }
+    }
+    return maxH;
+}
+
+QJsonObject NodeItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+
+    json["width"] = m_width;
+    json["height"] = m_height;
+    json["is_rounded"] = m_isRounded;
+    json["rotation_angle"] = rotation();
+
+    return json;
+}
+
+void NodeItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+
+    m_width = json["width"].toDouble();
+    m_height = json["height"].toDouble();
+    m_isRounded = json["is_rounded"].toInt();
+
+    setRotation(json["rotation_angle"].toDouble());
+
+    update();
 }

@@ -25,6 +25,7 @@ SOURCES += \
     mainwidget.cpp \
     materialeditordialog.cpp \
     nodeitem.cpp \
+    objectitem.cpp \
     paymentdialog.cpp \
     projecteditordialog.cpp \
     projectestimatedialog.cpp \
@@ -53,6 +54,7 @@ HEADERS += \
     mainwidget.h \
     materialeditordialog.h \
     nodeitem.h \
+    objectitem.h \
     paymentdialog.h \
     projecteditordialog.h \
     projectestimatedialog.h \

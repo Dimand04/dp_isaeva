@@ -4,6 +4,7 @@
 #include <QLineF>
 #include <QGraphicsSceneMouseEvent>
 #include <QtMath>
+#include <QJsonObject>
 
 DimensionItem::DimensionItem(QGraphicsItem *parent)
     : BaseEditorItem(parent), m_isDrawing(true), m_dragIndex(-1)
@@ -211,4 +212,26 @@ void DimensionItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         return;
     }
     BaseEditorItem::mouseReleaseEvent(event);
+}
+
+QJsonObject DimensionItem::toJson() const
+{
+    QJsonObject json = BaseEditorItem::toJson();
+    json["start_x"] = m_startPoint.x();
+    json["start_y"] = m_startPoint.y();
+    json["end_x"] = m_endPoint.x();
+    json["end_y"] = m_endPoint.y();
+    json["text_side"] = m_textSide;
+    return json;
+}
+
+void DimensionItem::fromJson(const QJsonObject &json)
+{
+    BaseEditorItem::fromJson(json);
+    m_startPoint = QPointF(json["start_x"].toDouble(), json["start_y"].toDouble());
+    m_endPoint = QPointF(json["end_x"].toDouble(), json["end_y"].toDouble());
+    m_textSide = json["text_side"].toInt();
+
+    m_isDrawing = false;
+    update();
 }

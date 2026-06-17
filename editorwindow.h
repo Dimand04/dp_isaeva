@@ -20,6 +20,9 @@ public:
     explicit EditorWindow(int projectId, QWidget *parent = nullptr);
     ~EditorWindow();
 
+    void saveProject();
+    void loadProject();
+
 private slots:
     void onToolButtonClicked();
     void onSelectionChanged();
@@ -35,6 +38,7 @@ private slots:
     void onTreeItemClicked(const QModelIndex &index);
     void onFloorPropertyChanged();
     void onRoofPropertyChanged();
+    void onObjectPropertyChanged();
 
 private:
     Ui::EditorWindow *ui;

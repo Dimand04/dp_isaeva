@@ -50,6 +50,11 @@ public:
     qreal grossSurfaceArea() const;
     qreal netSurfaceArea() const;
 
+    qreal netVolume() const;
+
+    QJsonObject toJson() const override;
+    void fromJson(const QJsonObject &json) override;
+
 protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
