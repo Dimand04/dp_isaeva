@@ -79,7 +79,6 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->sb_window_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWindowPropertyChanged);
     connect(ui->sb_window_elevation, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWindowPropertyChanged);
     connect(ui->sb_window_distance, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onWindowPropertyChanged);
-    connect(ui->cb_window_profile, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onWindowPropertyChanged);
 
     connect(ui->sb_door_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onDoorPropertyChanged);
     connect(ui->sb_door_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onDoorPropertyChanged);
@@ -188,7 +187,6 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     });
 
     connect(ui->le_object_name, &QLineEdit::textEdited, this, &EditorWindow::onObjectPropertyChanged);
-    connect(ui->cb_object_type, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onObjectPropertyChanged);
     connect(ui->sb_object_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onObjectPropertyChanged);
     connect(ui->sb_object_length, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onObjectPropertyChanged);
     connect(ui->sb_object_angle, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &EditorWindow::onObjectPropertyChanged);
@@ -319,14 +317,12 @@ void EditorWindow::onSelectionChanged()
             ui->sb_window_width->blockSignals(true);
             ui->sb_window_height->blockSignals(true);
             ui->sb_window_elevation->blockSignals(true);
-            ui->cb_window_profile->blockSignals(true);
             ui->sb_window_distance->blockSignals(true);
 
             ui->le_object_window_name->setText(window->name());
             ui->sb_window_width->setValue(window->widthInMeters());
             ui->sb_window_height->setValue(window->height());
             ui->sb_window_elevation->setValue(window->elevation());
-            ui->cb_window_profile->setCurrentIndex(window->profileType());
             ui->sb_window_distance->setValue(window->distanceFromStart());
             ui->lbl_window_area->setText(QString("Площадь проема: %1 м²").arg(window->area(), 0, 'f', 2));
 
@@ -334,7 +330,6 @@ void EditorWindow::onSelectionChanged()
             ui->sb_window_width->blockSignals(false);
             ui->sb_window_height->blockSignals(false);
             ui->sb_window_elevation->blockSignals(false);
-            ui->cb_window_profile->blockSignals(false);
             ui->sb_window_distance->blockSignals(false);
         };
 
@@ -498,19 +493,16 @@ void EditorWindow::onSelectionChanged()
 
         auto updateUI = [this, obj]() {
             ui->le_object_name->blockSignals(true);
-            ui->cb_object_type->blockSignals(true);
             ui->sb_object_width->blockSignals(true);
             ui->sb_object_length->blockSignals(true);
             ui->sb_object_angle->blockSignals(true);
 
             ui->le_object_name->setText(obj->name());
-            ui->cb_object_type->setCurrentIndex(obj->objectType());
             ui->sb_object_width->setValue(obj->widthInMeters());
             ui->sb_object_length->setValue(obj->lengthInMeters());
             ui->sb_object_angle->setValue(obj->rotation());
 
             ui->le_object_name->blockSignals(false);
-            ui->cb_object_type->blockSignals(false);
             ui->sb_object_width->blockSignals(false);
             ui->sb_object_length->blockSignals(false);
             ui->sb_object_angle->blockSignals(false);
@@ -575,7 +567,6 @@ void EditorWindow::onWindowPropertyChanged()
             window->setWidthInMeters(ui->sb_window_width->value());
             window->setHeight(ui->sb_window_height->value());
             window->setElevation(ui->sb_window_elevation->value());
-            window->setProfileType(ui->cb_window_profile->currentIndex());
             window->setDistanceFromStart(ui->sb_window_distance->value());
         }
     }
@@ -791,13 +782,11 @@ void EditorWindow::onObjectPropertyChanged()
         if (ObjectItem *obj = dynamic_cast<ObjectItem*>(m_trackedItem)) {
 
             QString newName = ui->le_object_name->text();
-            int newType = ui->cb_object_type->currentIndex();
             double newWidth = ui->sb_object_width->value();
             double newLength = ui->sb_object_length->value();
             double newAngle = ui->sb_object_angle->value();
 
             if (obj->name() != newName) obj->setName(newName);
-            obj->setObjectType(newType);
             obj->setWidthInMeters(newWidth);
             obj->setLengthInMeters(newLength);
 
