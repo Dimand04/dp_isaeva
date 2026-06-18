@@ -27,26 +27,14 @@ QRectF ObjectItem::boundingRect() const {
     return QRectF(0, -35, m_width, m_length + 35).adjusted(-5, -5, 5, 5);
 }
 
-QString ObjectItem::getTypeName() const {
-    switch (m_objectType) {
-    case TypeBed: return "Кровать";
-    case TypeSofa: return "Диван";
-    case TypeTable: return "Стол";
-    case TypePlumbing: return "Сантехника";
-    case TypeWardrobe: return "Шкаф";
-    default: return "Объект";
-    }
+QString ObjectItem::getTypeName() const
+{
+    return m_materialName.isEmpty() ? "Объект" : m_materialName;
 }
 
-QColor ObjectItem::getTypeColor() const {
-    switch (m_objectType) {
-    case TypeBed: return QColor(130, 180, 255, 180);
-    case TypeSofa: return QColor(255, 160, 100, 180);
-    case TypeTable: return QColor(200, 170, 120, 180);
-    case TypePlumbing: return QColor(100, 220, 220, 180);
-    case TypeWardrobe: return QColor(160, 140, 180, 180);
-    default: return QColor(200, 200, 200, 180);
-    }
+QColor ObjectItem::getTypeColor() const
+{
+    return QColor(200, 210, 225, 180);
 }
 
 void ObjectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -68,6 +56,7 @@ void ObjectItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
     QFont font = painter->font();
     font.setPointSize(8);
     painter->setFont(font);
+
     painter->drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, getTypeName());
 
     painter->setPen(QPen(QColor(80, 80, 80), 2));
@@ -255,7 +244,7 @@ QJsonObject ObjectItem::toJson() const
     QJsonObject json = BaseEditorItem::toJson();
     json["width"] = m_width;
     json["length"] = m_length;
-    json["object_type"] = m_objectType;
+    json["material_name"] = m_materialName;
     return json;
 }
 
@@ -264,8 +253,18 @@ void ObjectItem::fromJson(const QJsonObject &json)
     BaseEditorItem::fromJson(json);
     m_width = json["width"].toDouble();
     m_length = json["length"].toDouble();
-    m_objectType = json["object_type"].toInt();
+    m_materialName = json["material_name"].toString();
 
     setTransformOriginPoint(m_width / 2.0, m_length / 2.0);
     update();
 }
+
+void ObjectItem::setMaterialName(const QString &name)
+{
+    if (m_materialName == name) return;
+    m_materialName = name;
+    update();
+    emit itemChanged();
+}
+
+QString ObjectItem::materialName() const { return m_materialName; }

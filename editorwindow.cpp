@@ -19,6 +19,9 @@
 #include "filestoragemanager.h"
 #include <QMessageBox>
 #include <QButtonGroup>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
 
 EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     QMainWindow(parent),
@@ -26,6 +29,8 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     m_projectId(projectId)
 {
     ui->setupUi(this);
+
+    initMaterialComboBoxes();
 
     setWindowTitle(QString("Визуальный редактор — Проект №%1").arg(m_projectId));
     setMinimumSize(1000, 700);
@@ -194,6 +199,15 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
 
     connect(ui->action_saveProject, &QAction::triggered, this, &EditorWindow::saveProject);
 
+    connect(ui->cb_foundation_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onFoundationPropertyChanged);
+    connect(ui->cb_wall_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onWallPropertyChanged);
+    connect(ui->cb_window_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onWindowPropertyChanged);
+    connect(ui->cb_door_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onDoorPropertyChanged);
+    connect(ui->cb_node_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onNodePropertyChanged);
+    connect(ui->cb_floor_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onFloorPropertyChanged);
+    connect(ui->cb_roof_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onRoofPropertyChanged);
+    connect(ui->cb_furniture_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onObjectPropertyChanged);
+
     loadProject();
 }
 
@@ -256,12 +270,17 @@ void EditorWindow::onSelectionChanged()
             ui->sb_found_height->blockSignals(true);
             ui->sb_object_found_height->blockSignals(true);
             ui->sb_found_angle->blockSignals(true);
+            ui->cb_foundation_material->blockSignals(true);
 
             ui->le_object_foundation_name->setText(block->name());
             ui->sb_found_width->setValue(block->widthInMeters());
             ui->sb_found_height->setValue(block->lengthInMeters());
             ui->sb_object_found_height->setValue(block->height());
             ui->sb_found_angle->setValue(block->rotation());
+
+            int matIdx = ui->cb_foundation_material->findData(block->materialId());
+            ui->cb_foundation_material->setCurrentIndex(matIdx != -1 ? matIdx : 0);
+
             ui->lbl_found_area->setText(QString("Площадь: %1 м² | Объем бетона: %2 м³")
                                             .arg(block->area(), 0, 'f', 2)
                                             .arg(block->volume(), 0, 'f', 2));
@@ -271,6 +290,7 @@ void EditorWindow::onSelectionChanged()
             ui->sb_found_height->blockSignals(false);
             ui->sb_object_found_height->blockSignals(false);
             ui->sb_found_angle->blockSignals(false);
+            ui->cb_foundation_material->blockSignals(false);
         };
 
         updateUI();
@@ -286,6 +306,7 @@ void EditorWindow::onSelectionChanged()
             ui->sb_wall_height->blockSignals(true);
             ui->sb_wall_angle->blockSignals(true);
             ui->cb_wall_alignment->blockSignals(true);
+            ui->cb_wall_material->blockSignals(true);
 
             ui->le_object_wall_name->setText(wall->name());
             ui->sb_wall_length->setValue(wall->lengthInMeters());
@@ -293,6 +314,9 @@ void EditorWindow::onSelectionChanged()
             ui->sb_wall_height->setValue(wall->height());
             ui->sb_wall_angle->setValue(wall->angleInDegrees());
             ui->cb_wall_alignment->setCurrentIndex(wall->alignment());
+
+            int matIdx = ui->cb_wall_material->findData(wall->materialId());
+            ui->cb_wall_material->setCurrentIndex(matIdx != -1 ? matIdx : 0);
 
             ui->lbl_wall_area->setText(QString("Площадь: %1 м² | Объем: %2 м³")
                                            .arg(wall->netSurfaceArea(), 0, 'f', 2)
@@ -304,6 +328,7 @@ void EditorWindow::onSelectionChanged()
             ui->sb_wall_height->blockSignals(false);
             ui->sb_wall_angle->blockSignals(false);
             ui->cb_wall_alignment->blockSignals(false);
+            ui->cb_wall_material->blockSignals(false);
         };
 
         updateUI();
@@ -318,12 +343,17 @@ void EditorWindow::onSelectionChanged()
             ui->sb_window_height->blockSignals(true);
             ui->sb_window_elevation->blockSignals(true);
             ui->sb_window_distance->blockSignals(true);
+            ui->cb_window_material->blockSignals(true);
 
             ui->le_object_window_name->setText(window->name());
             ui->sb_window_width->setValue(window->widthInMeters());
             ui->sb_window_height->setValue(window->height());
             ui->sb_window_elevation->setValue(window->elevation());
             ui->sb_window_distance->setValue(window->distanceFromStart());
+
+            int matIdx = ui->cb_window_material->findData(window->materialId());
+            ui->cb_window_material->setCurrentIndex(matIdx != -1 ? matIdx : 0);
+
             ui->lbl_window_area->setText(QString("Площадь проема: %1 м²").arg(window->area(), 0, 'f', 2));
 
             ui->le_object_window_name->blockSignals(false);
@@ -331,6 +361,7 @@ void EditorWindow::onSelectionChanged()
             ui->sb_window_height->blockSignals(false);
             ui->sb_window_elevation->blockSignals(false);
             ui->sb_window_distance->blockSignals(false);
+            ui->cb_window_material->blockSignals(false);
         };
 
         updateUI();
@@ -345,12 +376,17 @@ void EditorWindow::onSelectionChanged()
             ui->sb_door_height->blockSignals(true);
             ui->sb_door_distance->blockSignals(true);
             ui->cb_door_swing->blockSignals(true);
+            ui->cb_door_material->blockSignals(true);
 
             ui->le_object_door_name->setText(door->name());
             ui->sb_door_width->setValue(door->widthInMeters());
             ui->sb_door_height->setValue(door->height());
             ui->sb_door_distance->setValue(door->distanceFromStart());
             ui->cb_door_swing->setCurrentIndex(door->swingType());
+
+            int matIdx = ui->cb_door_material->findData(door->materialId());
+            ui->cb_door_material->setCurrentIndex(matIdx != -1 ? matIdx : 0);
+
             ui->lbl_door_area->setText(QString("Площадь проема: %1 м²").arg(door->area(), 0, 'f', 2));
 
             ui->le_object_door_name->blockSignals(false);
@@ -358,6 +394,7 @@ void EditorWindow::onSelectionChanged()
             ui->sb_door_height->blockSignals(false);
             ui->sb_door_distance->blockSignals(false);
             ui->cb_door_swing->blockSignals(false);
+            ui->cb_door_material->blockSignals(false);
         };
 
         updateUI();
@@ -398,15 +435,21 @@ void EditorWindow::onSelectionChanged()
         auto updateUI = [this, floor]() {
             ui->le_object_floor_name->blockSignals(true);
             ui->sb_floor_thickness->blockSignals(true);
+            ui->cb_floor_material->blockSignals(true);
 
             ui->le_object_floor_name->setText(floor->name());
             ui->sb_floor_thickness->setValue(floor->height());
+
+            int matIdx = ui->cb_floor_material->findData(floor->materialId());
+            ui->cb_floor_material->setCurrentIndex(matIdx != -1 ? matIdx : 0);
+
             ui->lbl_floor_area->setText(QString("Площадь: %1 м² | Объем бетона: %2 м³")
                                             .arg(floor->area(), 0, 'f', 2)
                                             .arg(floor->volume(), 0, 'f', 2));
 
             ui->le_object_floor_name->blockSignals(false);
             ui->sb_floor_thickness->blockSignals(false);
+            ui->cb_floor_material->blockSignals(false);
         };
 
         updateUI();
@@ -452,7 +495,8 @@ void EditorWindow::onSelectionChanged()
 
         updateUI();
         connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
-    } else if (RoofItem *roof = dynamic_cast<RoofItem*>(item)) {
+    }
+    else if (RoofItem *roof = dynamic_cast<RoofItem*>(item)) {
         ui->stackedWidget->setCurrentIndex(9);
 
         auto updateUI = [this, roof]() {
@@ -461,11 +505,15 @@ void EditorWindow::onSelectionChanged()
             ui->sb_roof_overhang->blockSignals(true);
             ui->sb_roof_angle->blockSignals(true);
             ui->sb_roof_thickness->blockSignals(true);
+            ui->cb_roof_material->blockSignals(true);
 
             ui->le_object_roof_name->setText(roof->name());
             ui->cb_roof_type->setCurrentIndex(roof->roofType());
             ui->sb_roof_overhang->setValue(roof->overhang());
             ui->sb_roof_thickness->setValue(roof->height());
+
+            int matIdx = ui->cb_roof_material->findData(roof->materialId());
+            ui->cb_roof_material->setCurrentIndex(matIdx != -1 ? matIdx : 0);
 
             if (roof->roofType() == RoofItem::Flat) {
                 ui->sb_roof_angle->setValue(0);
@@ -484,11 +532,13 @@ void EditorWindow::onSelectionChanged()
             ui->sb_roof_overhang->blockSignals(false);
             ui->sb_roof_angle->blockSignals(false);
             ui->sb_roof_thickness->blockSignals(false);
+            ui->cb_roof_material->blockSignals(false);
         };
 
         updateUI();
         connect(m_trackedItem, &BaseEditorItem::itemChanged, this, updateUI);
-    } else if (ObjectItem *obj = dynamic_cast<ObjectItem*>(item)) {
+    }
+    else if (ObjectItem *obj = dynamic_cast<ObjectItem*>(item)) {
         ui->stackedWidget->setCurrentIndex(10);
 
         auto updateUI = [this, obj]() {
@@ -496,16 +546,21 @@ void EditorWindow::onSelectionChanged()
             ui->sb_object_width->blockSignals(true);
             ui->sb_object_length->blockSignals(true);
             ui->sb_object_angle->blockSignals(true);
+            ui->cb_furniture_material->blockSignals(true);
 
             ui->le_object_name->setText(obj->name());
             ui->sb_object_width->setValue(obj->widthInMeters());
             ui->sb_object_length->setValue(obj->lengthInMeters());
             ui->sb_object_angle->setValue(obj->rotation());
 
+            int matIdx = ui->cb_furniture_material->findData(obj->materialId());
+            ui->cb_furniture_material->setCurrentIndex(matIdx != -1 ? matIdx : 0);
+
             ui->le_object_name->blockSignals(false);
             ui->sb_object_width->blockSignals(false);
             ui->sb_object_length->blockSignals(false);
             ui->sb_object_angle->blockSignals(false);
+            ui->cb_furniture_material->blockSignals(false);
         };
 
         updateUI();
@@ -517,21 +572,15 @@ void EditorWindow::onFoundationPropertyChanged()
 {
     if (m_trackedItem) {
         if (FoundationBlockItem *block = dynamic_cast<FoundationBlockItem*>(m_trackedItem)) {
+            block->setMaterialId(ui->cb_foundation_material->currentData().toInt());
 
             QString newName = ui->le_object_foundation_name->text();
-            double newWidth = ui->sb_found_width->value();
-
-            double newLength = ui->sb_found_height->value();
-
-            double newDepth = ui->sb_object_found_height->value();
-
-            double newAngle = ui->sb_found_angle->value();
-
             if (block->name() != newName) block->setName(newName);
-            block->setWidthInMeters(newWidth);
-            block->setLengthInMeters(newLength);
-            block->setHeight(newDepth);
-            block->setRotation(newAngle);
+
+            block->setWidthInMeters(ui->sb_found_width->value());
+            block->setLengthInMeters(ui->sb_found_height->value());
+            block->setHeight(ui->sb_object_found_height->value());
+            block->setRotation(ui->sb_found_angle->value());
         }
     }
 }
@@ -540,19 +589,16 @@ void EditorWindow::onWallPropertyChanged()
 {
     if (m_trackedItem) {
         if (WallItem *wall = dynamic_cast<WallItem*>(m_trackedItem)) {
-            QString newName = ui->le_object_wall_name->text();
-            double newLength = ui->sb_wall_length->value();
-            double newThickness = ui->sb_wall_thickness->value();
-            double newHeight = ui->sb_wall_height->value();
-            double newAngle = ui->sb_wall_angle->value();
-            int newAlignment = ui->cb_wall_alignment->currentIndex();
+            wall->setMaterialId(ui->cb_wall_material->currentData().toInt());
 
+            QString newName = ui->le_object_wall_name->text();
             if (wall->name() != newName) wall->setName(newName);
-            wall->setLengthInMeters(newLength);
-            wall->setThicknessInMm(newThickness);
-            wall->setHeight(newHeight);
-            wall->setAngleInDegrees(newAngle);
-            wall->setAlignment(newAlignment);
+
+            wall->setLengthInMeters(ui->sb_wall_length->value());
+            wall->setThicknessInMm(ui->sb_wall_thickness->value());
+            wall->setHeight(ui->sb_wall_height->value());
+            wall->setAngleInDegrees(ui->sb_wall_angle->value());
+            wall->setAlignment(ui->cb_wall_alignment->currentIndex());
         }
     }
 }
@@ -561,6 +607,8 @@ void EditorWindow::onWindowPropertyChanged()
 {
     if (m_trackedItem) {
         if (WindowItem *window = dynamic_cast<WindowItem*>(m_trackedItem)) {
+            window->setMaterialId(ui->cb_window_material->currentData().toInt());
+
             QString newName = ui->le_object_window_name->text();
             if (window->name() != newName) window->setName(newName);
 
@@ -576,6 +624,8 @@ void EditorWindow::onDoorPropertyChanged()
 {
     if (m_trackedItem) {
         if (DoorItem *door = dynamic_cast<DoorItem*>(m_trackedItem)) {
+            door->setMaterialId(ui->cb_door_material->currentData().toInt());
+
             QString newName = ui->le_object_door_name->text();
             if (door->name() != newName) door->setName(newName);
 
@@ -591,6 +641,8 @@ void EditorWindow::onNodePropertyChanged()
 {
     if (m_trackedItem) {
         if (NodeItem *node = dynamic_cast<NodeItem*>(m_trackedItem)) {
+            node->setMaterialId(ui->cb_node_material->currentData().toInt());
+
             QString newName = ui->le_object_node_name->text();
             if (node->name() != newName) node->setName(newName);
 
@@ -618,6 +670,8 @@ void EditorWindow::onFloorPropertyChanged()
 {
     if (m_trackedItem) {
         if (FloorItem *floor = dynamic_cast<FloorItem*>(m_trackedItem)) {
+            floor->setMaterialId(ui->cb_floor_material->currentData().toInt());
+
             QString newName = ui->le_object_floor_name->text();
             if (floor->name() != newName) floor->setName(newName);
 
@@ -644,12 +698,13 @@ void EditorWindow::onRoofPropertyChanged()
 {
     if (m_trackedItem) {
         if (RoofItem *roof = dynamic_cast<RoofItem*>(m_trackedItem)) {
+            roof->setMaterialId(ui->cb_roof_material->currentData().toInt());
 
             QString newName = ui->le_object_roof_name->text();
+            if (roof->name() != newName) roof->setName(newName);
+
             int newType = ui->cb_roof_type->currentIndex();
-            double newOverhang = ui->sb_roof_overhang->value();
             double newAngle = ui->sb_roof_angle->value();
-            double newThickness = ui->sb_roof_thickness->value();
 
             if (newType == RoofItem::Flat) {
                 newAngle = 0.0;
@@ -661,11 +716,10 @@ void EditorWindow::onRoofPropertyChanged()
                 ui->sb_roof_angle->setEnabled(true);
             }
 
-            if (roof->name() != newName) roof->setName(newName);
             roof->setRoofType(newType);
-            roof->setOverhang(newOverhang);
+            roof->setOverhang(ui->sb_roof_overhang->value());
             roof->setAngle(newAngle);
-            roof->setHeight(newThickness);
+            roof->setHeight(ui->sb_roof_thickness->value());
         }
     }
 }
@@ -780,16 +834,22 @@ void EditorWindow::onObjectPropertyChanged()
 {
     if (m_trackedItem) {
         if (ObjectItem *obj = dynamic_cast<ObjectItem*>(m_trackedItem)) {
+            int matId = ui->cb_furniture_material->currentData().toInt();
+            obj->setMaterialId(matId);
+
+            if (matId == -1) {
+                obj->setMaterialName("");
+            } else {
+                obj->setMaterialName(ui->cb_furniture_material->currentText());
+            }
 
             QString newName = ui->le_object_name->text();
-            double newWidth = ui->sb_object_width->value();
-            double newLength = ui->sb_object_length->value();
-            double newAngle = ui->sb_object_angle->value();
-
             if (obj->name() != newName) obj->setName(newName);
-            obj->setWidthInMeters(newWidth);
-            obj->setLengthInMeters(newLength);
 
+            obj->setWidthInMeters(ui->sb_object_width->value());
+            obj->setLengthInMeters(ui->sb_object_length->value());
+
+            double newAngle = ui->sb_object_angle->value();
             if (qAbs(obj->rotation() - newAngle) > 0.01) {
                 obj->setRotation(newAngle);
             }
@@ -938,4 +998,45 @@ void EditorWindow::loadProject()
             }
         }
     }
+}
+
+void EditorWindow::loadMaterialsForComponent(QComboBox *comboBox, const QString &systemCode)
+{
+    if (!comboBox) return;
+
+    comboBox->blockSignals(true);
+    comboBox->clear();
+
+    comboBox->addItem("— Не выбран —", -1);
+
+    QSqlQuery query;
+    query.prepare("SELECT m.id, m.name "
+                  "FROM materials m "
+                  "JOIN categories c ON m.category_id = c.id "
+                  "WHERE c.system_code = :code "
+                  "ORDER BY m.name ASC");
+    query.bindValue(":code", systemCode);
+
+    if (query.exec()) {
+        while (query.next()) {
+            int id = query.value("id").toInt();
+            QString name = query.value("name").toString();
+
+            comboBox->addItem(name, id);
+        }
+    }
+
+    comboBox->blockSignals(false);
+}
+
+void EditorWindow::initMaterialComboBoxes()
+{
+    loadMaterialsForComponent(ui->cb_foundation_material, "FOUNDATION_MAT");
+    loadMaterialsForComponent(ui->cb_wall_material, "WALL_MAT");
+    loadMaterialsForComponent(ui->cb_node_material, "WALL_MAT");
+    loadMaterialsForComponent(ui->cb_floor_material, "FLOOR_MAT");
+    loadMaterialsForComponent(ui->cb_window_material, "WINDOW_MAT");
+    loadMaterialsForComponent(ui->cb_door_material, "DOOR_MAT");
+    loadMaterialsForComponent(ui->cb_roof_material, "ROOF_MAT");
+    loadMaterialsForComponent(ui->cb_furniture_material, "FURNITURE_MAT");
 }

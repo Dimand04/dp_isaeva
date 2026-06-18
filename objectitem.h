@@ -42,6 +42,9 @@ public:
     QJsonObject toJson() const override;
     void fromJson(const QJsonObject &json) override;
 
+    void setMaterialName(const QString &name);
+    QString materialName() const;
+
 protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
@@ -59,6 +62,8 @@ private:
     QRectF rotateHandle() const;
     QString getTypeName() const;
     QColor getTypeColor() const;
+
+    QString m_materialName;
 };
 
 #endif // OBJECTITEM_H

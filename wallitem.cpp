@@ -376,6 +376,8 @@ QJsonObject WallItem::toJson() const
 
 void WallItem::fromJson(const QJsonObject &json)
 {
+    prepareGeometryChange();
+
     BaseEditorItem::fromJson(json);
 
     m_line.setP1(QPointF(json["p1_x"].toDouble(), json["p1_y"].toDouble()));

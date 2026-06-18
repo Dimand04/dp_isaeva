@@ -48,6 +48,8 @@ private:
     QLabel *m_coordLabel;
     QStandardItemModel *m_treeModel;
     QStandardItem* getOrCreateLayerNode(int levelId, const QString &layerName);
+    void loadMaterialsForComponent(class QComboBox *comboBox, const QString &systemCode);
+    void initMaterialComboBoxes();
 };
 
 Q_DECLARE_METATYPE(BaseEditorItem*)

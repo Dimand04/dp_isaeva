@@ -31,7 +31,12 @@ public:
 
     static BaseEditorItem* createFromJson(const QJsonObject &json);
 
-    void setMaterialId(int id) { m_materialId = id; }
+    void setMaterialId(int id) {
+        if (m_materialId != id) {
+            m_materialId = id;
+            emit itemChanged();
+        }
+    }
     int materialId() const { return m_materialId; }
 
 protected:
