@@ -23,6 +23,8 @@ bool setupDatabaseConnection() {
 
 int main(int argc, char *argv[])
 {
+    //qputenv("QSG_RHI_BACKEND", "opengl"); // или d3d11 для DirectX
+
     int currentExitCode = 0;
 
     do {

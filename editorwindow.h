@@ -48,6 +48,8 @@ private slots:
     void redo();
     void saveStateToUndoStack();
     void onShow3DClicked();
+    void onDeleteLayerClicked();
+    void onDeleteFloorClicked();
 
 protected:
     void closeEvent(QCloseEvent *event) override;

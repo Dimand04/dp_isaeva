@@ -26,7 +26,7 @@ private:
     void setupEnvironment();
     void buildSceneFromJson(const QString &filePath);
 
-    void createBox(float cx, float cz, float cy, float sizeX, float sizeY, float sizeZ, float angleY, QColor color);
+    void createBox(float cx, float cz, float cy, float sizeX, float sizeY, float sizeZ, float angleY, Qt3DExtras::QPhongMaterial *material);
 };
 
 #endif // VIEWER3D_H

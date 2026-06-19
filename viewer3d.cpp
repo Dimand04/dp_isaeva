@@ -14,6 +14,15 @@
 #include <Qt3DCore/QAttribute>
 #include <Qt3DCore/QBuffer>
 
+static Qt3DExtras::QPhongMaterial* createMaterial(QColor diffuse, float shininess = 0.0f, QColor specular = QColor(15, 15, 15)) {
+    Qt3DExtras::QPhongMaterial *mat = new Qt3DExtras::QPhongMaterial();
+    mat->setDiffuse(diffuse);
+    mat->setAmbient(diffuse.darker(300));
+    mat->setSpecular(specular);
+    mat->setShininess(shininess);
+    return mat;
+}
+
 static Qt3DRender::QGeometryRenderer* createTriangularPrismMesh(Qt3DCore::QNode *parent, float w, float h, float d, float ox, float oz) {
     Qt3DRender::QGeometryRenderer *renderer = new Qt3DRender::QGeometryRenderer(parent);
     Qt3DCore::QGeometry *geometry = new Qt3DCore::QGeometry(renderer);
@@ -23,10 +32,8 @@ static Qt3DRender::QGeometryRenderer* createTriangularPrismMesh(Qt3DCore::QNode 
     bufferBytes.resize(8 * 3 * 6 * sizeof(float));
     float *ptr = reinterpret_cast<float*>(bufferBytes.data());
 
-    // ЗАЩИТА ОТ КРАША ВИДЕОКАРТЫ: Проверяем векторы на ноль (NaN)
     auto addTri = [&](QVector3D v1, QVector3D v2, QVector3D v3) {
         QVector3D cross = QVector3D::crossProduct(v2 - v1, v3 - v1);
-        // Если вектор нулевой, ставим дефолтную нормаль вверх, иначе нормализуем
         QVector3D n = (cross.lengthSquared() > 1e-6f) ? cross.normalized() : QVector3D(0, 1, 0);
 
         *ptr++ = v1.x(); *ptr++ = v1.y(); *ptr++ = v1.z();
@@ -74,9 +81,121 @@ static Qt3DRender::QGeometryRenderer* createTriangularPrismMesh(Qt3DCore::QNode 
     geometry->addAttribute(posAttr);
     geometry->addAttribute(normAttr);
     renderer->setGeometry(geometry);
-
     renderer->setPrimitiveType(Qt3DRender::QGeometryRenderer::Triangles);
     renderer->setVertexCount(24);
+
+    return renderer;
+}
+
+static Qt3DRender::QGeometryRenderer* createRoofMesh(Qt3DCore::QNode *parent, float w, float h, float d, int roofType, float angle) {
+    Qt3DRender::QGeometryRenderer *renderer = new Qt3DRender::QGeometryRenderer(parent);
+    Qt3DCore::QGeometry *geometry = new Qt3DCore::QGeometry(renderer);
+    Qt3DCore::QBuffer *vertexBuffer = new Qt3DCore::QBuffer(geometry);
+
+    QByteArray bufferBytes;
+    bufferBytes.resize(24 * 3 * 6 * sizeof(float));
+    float *ptr = reinterpret_cast<float*>(bufferBytes.data());
+    int triCount = 0;
+
+    auto addTri = [&](QVector3D v1, QVector3D v2, QVector3D v3) {
+        QVector3D cross = QVector3D::crossProduct(v2 - v1, v3 - v1);
+        QVector3D n = (cross.lengthSquared() > 1e-6f) ? cross.normalized() : QVector3D(0, 1, 0);
+        *ptr++ = v1.x(); *ptr++ = v1.y(); *ptr++ = v1.z();
+        *ptr++ = n.x(); *ptr++ = n.y(); *ptr++ = n.z();
+        *ptr++ = v2.x(); *ptr++ = v2.y(); *ptr++ = v2.z();
+        *ptr++ = n.x(); *ptr++ = n.y(); *ptr++ = n.z();
+        *ptr++ = v3.x(); *ptr++ = v3.y(); *ptr++ = v3.z();
+        *ptr++ = n.x(); *ptr++ = n.y(); *ptr++ = n.z();
+        triCount++;
+    };
+
+    auto addQuad = [&](QVector3D v1, QVector3D v2, QVector3D v3, QVector3D v4) {
+        addTri(v1, v2, v3);
+        addTri(v1, v3, v4);
+    };
+
+    if (roofType != 0 && angle <= 0.1f) {
+        angle = 30.0f;
+    }
+
+    float hw = w / 2.0f;
+    float hd = d / 2.0f;
+
+    QVector3D b0(-hw, 0, -hd), b1(hw, 0, -hd), b2(hw, 0, hd), b3(-hw, 0, hd);
+    QVector3D t0(-hw, h, -hd), t1(hw, h, -hd), t2(hw, h, hd), t3(-hw, h, hd);
+
+    addQuad(b0, b1, b2, b3);
+    addQuad(b3, b2, t2, t3);
+    addQuad(b2, b1, t1, t2);
+    addQuad(b1, b0, t0, t1);
+    addQuad(b0, b3, t3, t0);
+
+    if (roofType == 0) {
+        addQuad(t3, t2, t1, t0);
+    } else {
+        bool ridgeX = (w >= d);
+        float rHeight = qTan(qDegreesToRadians(angle)) * (ridgeX ? hd : hw);
+
+        if (roofType == 1) {
+            if (ridgeX) {
+                QVector3D r1(-hw, h + rHeight, 0), r2(hw, h + rHeight, 0);
+                addQuad(t3, t2, r2, r1);
+                addQuad(t1, t0, r1, r2);
+                addTri(t2, t1, r2);
+                addTri(t0, t3, r1);
+            } else {
+                QVector3D r1(0, h + rHeight, -hd), r2(0, h + rHeight, hd);
+                addQuad(t2, t1, r1, r2);
+                addQuad(t0, t3, r2, r1);
+                addTri(t3, t2, r2);
+                addTri(t1, t0, r1);
+            }
+        } else if (roofType == 2) {
+            if (ridgeX) {
+                QVector3D r1(-hw + hd, h + rHeight, 0), r2(hw - hd, h + rHeight, 0);
+                if (hw < hd) { r1 = QVector3D(0, h+rHeight, 0); r2 = r1; }
+                addQuad(t3, t2, r2, r1);
+                addQuad(t1, t0, r1, r2);
+                addTri(t2, t1, r2);
+                addTri(t0, t3, r1);
+            } else {
+                QVector3D r1(0, h + rHeight, -hd + hw), r2(0, h + rHeight, hd - hw);
+                if (hd < hw) { r1 = QVector3D(0, h+rHeight, 0); r2 = r1; }
+                addQuad(t2, t1, r1, r2);
+                addQuad(t0, t3, r2, r1);
+                addTri(t3, t2, r2);
+                addTri(t1, t0, r1);
+            }
+        }
+    }
+
+    vertexBuffer->setData(bufferBytes);
+
+    Qt3DCore::QAttribute *posAttr = new Qt3DCore::QAttribute(geometry);
+    posAttr->setName(Qt3DCore::QAttribute::defaultPositionAttributeName());
+    posAttr->setVertexBaseType(Qt3DCore::QAttribute::Float);
+    posAttr->setVertexSize(3);
+    posAttr->setAttributeType(Qt3DCore::QAttribute::VertexAttribute);
+    posAttr->setBuffer(vertexBuffer);
+    posAttr->setByteStride(6 * sizeof(float));
+    posAttr->setByteOffset(0);
+    posAttr->setCount(triCount * 3);
+
+    Qt3DCore::QAttribute *normAttr = new Qt3DCore::QAttribute(geometry);
+    normAttr->setName(Qt3DCore::QAttribute::defaultNormalAttributeName());
+    normAttr->setVertexBaseType(Qt3DCore::QAttribute::Float);
+    normAttr->setVertexSize(3);
+    normAttr->setAttributeType(Qt3DCore::QAttribute::VertexAttribute);
+    normAttr->setBuffer(vertexBuffer);
+    normAttr->setByteStride(6 * sizeof(float));
+    normAttr->setByteOffset(3 * sizeof(float));
+    normAttr->setCount(triCount * 3);
+
+    geometry->addAttribute(posAttr);
+    geometry->addAttribute(normAttr);
+    renderer->setGeometry(geometry);
+    renderer->setPrimitiveType(Qt3DRender::QGeometryRenderer::Triangles);
+    renderer->setVertexCount(triCount * 3);
 
     return renderer;
 }
@@ -84,14 +203,15 @@ static Qt3DRender::QGeometryRenderer* createTriangularPrismMesh(Qt3DCore::QNode 
 Viewer3D::Viewer3D(const QString &jsonFilePath)
 {
     m_view = new Qt3DExtras::Qt3DWindow();
-    m_view->defaultFrameGraph()->setClearColor(QColor(135, 206, 235));
+
+    m_view->defaultFrameGraph()->setClearColor(QColor(160, 185, 215));
     m_view->setTitle("3D Визуализация проекта");
 
     m_rootEntity = new Qt3DCore::QEntity();
 
     Qt3DRender::QCamera *camera = m_view->camera();
     camera->lens()->setPerspectiveProjection(45.0f, 16.0f/9.0f, 0.1f, 10000.0f);
-    camera->setPosition(QVector3D(9.0f, 15.0f, 15.0f));
+    camera->setPosition(QVector3D(12.0f, 15.0f, 15.0f));
     camera->setViewCenter(QVector3D(9.0f, 0.0f, 4.5f));
 
     Qt3DExtras::QOrbitCameraController *camController = new Qt3DExtras::QOrbitCameraController(m_rootEntity);
@@ -107,15 +227,12 @@ Viewer3D::Viewer3D(const QString &jsonFilePath)
 
 void Viewer3D::show()
 {
-    // Оборачиваем 3D-сцену в стандартный QWidget
     QWidget *container = QWidget::createWindowContainer(m_view);
     container->setMinimumSize(1024, 768);
     container->setWindowTitle("3D Визуализация проекта");
 
-    // ВАЖНО: Даем жесткую команду очищать видеопамять при закрытии крестиком
     container->setAttribute(Qt::WA_DeleteOnClose);
 
-    // При уничтожении контейнера удаляем и сам класс Viewer3D из оперативной памяти
     QObject::connect(container, &QWidget::destroyed, [this]() {
         delete this;
     });
@@ -125,20 +242,33 @@ void Viewer3D::show()
 
 void Viewer3D::setupEnvironment()
 {
-    Qt3DCore::QEntity *lightEntity = new Qt3DCore::QEntity(m_rootEntity);
-    Qt3DRender::QDirectionalLight *light = new Qt3DRender::QDirectionalLight(lightEntity);
-    light->setColor("white");
-    light->setIntensity(0.8f);
-    light->setWorldDirection(QVector3D(-1.0f, -1.0f, -1.0f));
-    lightEntity->addComponent(light);
+    Qt3DCore::QEntity *sunEntity = new Qt3DCore::QEntity(m_rootEntity);
+    Qt3DRender::QDirectionalLight *sunLight = new Qt3DRender::QDirectionalLight(sunEntity);
+    sunLight->setColor(QColor(255, 248, 235));
+    sunLight->setIntensity(0.85f);
+    sunLight->setWorldDirection(QVector3D(-0.5f, -1.0f, -0.5f));
+    sunEntity->addComponent(sunLight);
+
+    Qt3DCore::QEntity *skyEntity = new Qt3DCore::QEntity(m_rootEntity);
+    Qt3DRender::QDirectionalLight *skyLight = new Qt3DRender::QDirectionalLight(skyEntity);
+    skyLight->setColor(QColor(190, 210, 240));
+    skyLight->setIntensity(0.35f);
+    skyLight->setWorldDirection(QVector3D(0.5f, -0.3f, 0.5f));
+    skyEntity->addComponent(skyLight);
+
+    Qt3DCore::QEntity *bounceEntity = new Qt3DCore::QEntity(m_rootEntity);
+    Qt3DRender::QDirectionalLight *bounceLight = new Qt3DRender::QDirectionalLight(bounceEntity);
+    bounceLight->setColor(QColor(90, 110, 90));
+    bounceLight->setIntensity(0.15f);
+    bounceLight->setWorldDirection(QVector3D(0.0f, 1.0f, 0.0f));
+    bounceEntity->addComponent(bounceLight);
 
     Qt3DCore::QEntity *grassEntity = new Qt3DCore::QEntity(m_rootEntity);
     Qt3DExtras::QPlaneMesh *grassMesh = new Qt3DExtras::QPlaneMesh();
     grassMesh->setWidth(100.0f);
     grassMesh->setHeight(100.0f);
 
-    Qt3DExtras::QPhongMaterial *grassMaterial = new Qt3DExtras::QPhongMaterial();
-    grassMaterial->setDiffuse(QColor(85, 170, 0));
+    Qt3DExtras::QPhongMaterial *grassMaterial = createMaterial(QColor(65, 100, 55), 0.0f, QColor(0,0,0));
 
     Qt3DCore::QTransform *grassTransform = new Qt3DCore::QTransform();
     grassTransform->setTranslation(QVector3D(9.0f, -0.01f, 4.5f));
@@ -148,7 +278,7 @@ void Viewer3D::setupEnvironment()
     grassEntity->addComponent(grassTransform);
 }
 
-void Viewer3D::createBox(float cx, float cz, float cy, float sizeX, float sizeY, float sizeZ, float angleY, QColor color)
+void Viewer3D::createBox(float cx, float cz, float cy, float sizeX, float sizeY, float sizeZ, float angleY, Qt3DExtras::QPhongMaterial *material)
 {
     Qt3DCore::QEntity *boxEntity = new Qt3DCore::QEntity(m_rootEntity);
 
@@ -156,9 +286,6 @@ void Viewer3D::createBox(float cx, float cz, float cy, float sizeX, float sizeY,
     boxMesh->setXExtent(sizeX);
     boxMesh->setYExtent(sizeY);
     boxMesh->setZExtent(sizeZ);
-
-    Qt3DExtras::QPhongMaterial *material = new Qt3DExtras::QPhongMaterial();
-    material->setDiffuse(color);
 
     Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
     transform->setTranslation(QVector3D(cx, cy + sizeY / 2.0f, cz));
@@ -219,39 +346,33 @@ void Viewer3D::buildSceneFromJson(const QString &filePath)
             float cz = pz + (p1y + p2y) / 2.0f + (nz * offsetDist);
 
             float wallAngle = qRadiansToDegrees(qAtan2(dz, dx));
-            createBox(cx, cz, baseHeightY, length, height, thickness, -(rotation + wallAngle), QColor(230, 230, 225));
+
+            Qt3DExtras::QPhongMaterial *mat = createMaterial(QColor(225, 225, 220), 0.0f, QColor(0,0,0));
+            createBox(cx, cz, baseHeightY, length, height, thickness, -(rotation + wallAngle), mat);
         }
         else if (type == "NodeItem") {
-            // Размеры угла уже лежат в метрах!
             float nWidth = obj["width"].toDouble();
             float nDepth = obj["height"].toDouble();
             float nAngle = obj["rotation_angle"].toDouble();
 
-            // Если высоты нет (старый файл), ставим стандартные 2.8м
             float nHeight = obj.contains("wall_height") && obj["wall_height"].toDouble() > 0.1f
                                 ? obj["wall_height"].toDouble()
                                 : 2.8f;
 
-            // Компенсация оси вращения из 2D: setTransformOriginPoint(10.0, 10.0) -> 0.1 метра
             float ox = 10.0f * scale;
             float oz = 10.0f * scale;
 
             Qt3DCore::QEntity *nodeEntity = new Qt3DCore::QEntity(m_rootEntity);
-
-            // Вызываем наш кастомный генератор Треугольника
             Qt3DRender::QGeometryRenderer *mesh = createTriangularPrismMesh(nodeEntity, nWidth, nHeight, nDepth, ox, oz);
 
-            Qt3DExtras::QPhongMaterial *material = new Qt3DExtras::QPhongMaterial();
-            material->setDiffuse(QColor(230, 230, 225)); // Тот же цвет, что и у стен
+            Qt3DExtras::QPhongMaterial *mat = createMaterial(QColor(225, 225, 220), 0.0f, QColor(0,0,0));
 
             Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
-
-            // В 3D ставим якорь ровно в ту же абсолютную точку, что и в 2D, и крутим
             transform->setTranslation(QVector3D(px + ox, baseHeightY, pz + oz));
             transform->setRotationY(-nAngle);
 
             nodeEntity->addComponent(mesh);
-            nodeEntity->addComponent(material);
+            nodeEntity->addComponent(mat);
             nodeEntity->addComponent(transform);
         }
         else if (type == "WindowItem" || type == "DoorItem") {
@@ -267,12 +388,16 @@ void Viewer3D::buildSceneFromJson(const QString &filePath)
             }
 
             float thickness = wallThickness + 0.04f;
-
             float cx = px;
             float cz = pz;
 
-            QColor col = (type == "WindowItem") ? QColor(135, 206, 250, 200) : QColor(139, 69, 19);
-            createBox(cx, cz, baseHeightY + elevation, width, height, thickness, -rotation, col);
+            Qt3DExtras::QPhongMaterial *mat;
+            if (type == "WindowItem") {
+                mat = createMaterial(QColor(40, 60, 80), 80.0f, QColor(255, 255, 255));
+            } else {
+                mat = createMaterial(QColor(90, 60, 40), 1.0f, QColor(10,10,10));
+            }
+            createBox(cx, cz, baseHeightY + elevation, width, height, thickness, -rotation, mat);
         }
         else if (type == "FoundationBlockItem" || type == "ObjectItem") {
             float width = obj["width"].toDouble() * scale;
@@ -283,11 +408,14 @@ void Viewer3D::buildSceneFromJson(const QString &filePath)
             float cx = px + (width / 2.0f) * qCos(rad) - (length / 2.0f) * qSin(rad);
             float cz = pz + (width / 2.0f) * qSin(rad) + (length / 2.0f) * qCos(rad);
 
-            QColor col = (type == "FoundationBlockItem") ? QColor(80, 80, 80) : QColor(139, 69, 19);
+            Qt3DExtras::QPhongMaterial *mat = (type == "FoundationBlockItem")
+                                                  ? createMaterial(QColor(100, 100, 100), 0.0f, QColor(0,0,0))
+                                                  : createMaterial(QColor(120, 70, 30), 2.0f);
+
             float startY = (type == "FoundationBlockItem") ? baseHeightY - height : baseHeightY;
-            createBox(cx, cz, startY, width, height, length, -rotation, col);
+            createBox(cx, cz, startY, width, height, length, -rotation, mat);
         }
-        else if (type == "FloorItem" || type == "RoofItem") {
+        else if (type == "FloorItem") {
             QJsonArray poly = obj["polygon"].toArray();
             if(poly.size() > 0) {
                 float minX = 99999, maxX = -99999, minZ = 99999, maxZ = -99999;
@@ -305,12 +433,50 @@ void Viewer3D::buildSceneFromJson(const QString &filePath)
                 float cx = px + (maxX + minX) / 2.0f;
                 float cz = pz + (maxZ + minZ) / 2.0f;
 
-                float startY = baseHeightY;
-                if (type == "FloorItem") startY -= h;
-                if (type == "RoofItem") startY += 2.8f;
+                float startY = baseHeightY - h;
+                Qt3DExtras::QPhongMaterial *mat = createMaterial(QColor(130, 110, 90), 0.0f, QColor(0,0,0));
+                createBox(cx, cz, startY, w, h, l, -rotation, mat);
+            }
+        }
+        else if (type == "RoofItem") {
+            QJsonArray poly = obj["polygon"].toArray();
+            if(poly.size() > 0) {
+                float minX = 99999, maxX = -99999, minZ = 99999, maxZ = -99999;
+                for (const QJsonValue &v : poly) {
+                    float vx = v.toObject()["x"].toDouble() * scale;
+                    float vz = v.toObject()["y"].toDouble() * scale;
+                    if (vx < minX) minX = vx; if (vx > maxX) maxX = vx;
+                    if (vz < minZ) minZ = vz; if (vz > maxZ) maxZ = vz;
+                }
 
-                QColor col = (type == "FloorItem") ? QColor(150, 130, 100) : QColor(160, 50, 50);
-                createBox(cx, cz, startY, w, h, l, -rotation, col);
+                float baseW = maxX - minX;
+                float baseL = maxZ - minZ;
+
+                float h = obj["height"].toDouble();
+                int roofType = obj["roof_type"].toInt();
+                float roofAngle = obj["angle"].toDouble();
+                float overhang = obj["overhang"].toDouble();
+
+                float w = baseW + (overhang * 2.0f);
+                float l = baseL + (overhang * 2.0f);
+
+                float cx = px + (maxX + minX) / 2.0f;
+                float cz = pz + (maxZ + minZ) / 2.0f;
+
+                float startY = baseHeightY + 2.8f;
+
+                Qt3DCore::QEntity *roofEntity = new Qt3DCore::QEntity(m_rootEntity);
+                Qt3DRender::QGeometryRenderer *mesh = createRoofMesh(roofEntity, w, h, l, roofType, roofAngle);
+
+                Qt3DExtras::QPhongMaterial *material = createMaterial(QColor(120, 55, 45), 2.0f, QColor(10,10,10));
+
+                Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
+                transform->setTranslation(QVector3D(cx, startY, cz));
+                transform->setRotationY(-rotation);
+
+                roofEntity->addComponent(mesh);
+                roofEntity->addComponent(material);
+                roofEntity->addComponent(transform);
             }
         }
     }

@@ -234,6 +234,9 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
 
     connect(ui->action_3D, &QAction::triggered, this, &EditorWindow::onShow3DClicked);
 
+    connect(ui->btn_delete_layer, &QPushButton::clicked, this, &EditorWindow::onDeleteLayerClicked);
+    connect(ui->btn_delete_floor, &QPushButton::clicked, this, &EditorWindow::onDeleteFloorClicked);
+
     loadProject();
 }
 
@@ -1233,4 +1236,86 @@ void EditorWindow::onShow3DClicked()
     QString filePath = FileStorageManager::getProjectFolder(m_projectId) + "/layout.json";
     Viewer3D *viewer = new Viewer3D(filePath);
     viewer->show();
+}
+
+void EditorWindow::onDeleteLayerClicked()
+{
+    QString currentLayer = ui->cb_active_layer->currentText();
+
+    if (currentLayer == "Основной") {
+        QMessageBox::warning(this, "Ошибка", "Базовый слой «Основной» удалить нельзя!");
+        return;
+    }
+
+    QMessageBox::StandardButton reply = QMessageBox::question(this, "Удаление слоя",
+                                                              QString("Вы уверены, что хотите удалить слой «%1»?\n\nВСЕ объекты на этом слое будут удалены!").arg(currentLayer),
+                                                              QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        QList<QGraphicsItem*> itemsToDelete;
+        for (QGraphicsItem *item : m_scene->items()) {
+            if (BaseEditorItem *bItem = dynamic_cast<BaseEditorItem*>(item)) {
+                if (bItem->layerName() == currentLayer) {
+                    itemsToDelete.append(bItem);
+                }
+            }
+        }
+
+        for (QGraphicsItem *item : itemsToDelete) {
+            m_scene->removeItem(item);
+            delete item;
+        }
+
+        ui->cb_active_layer->removeItem(ui->cb_active_layer->currentIndex());
+
+        int mainIdx = ui->cb_active_layer->findText("Основной");
+        if (mainIdx != -1) {
+            ui->cb_active_layer->setCurrentIndex(mainIdx);
+        }
+        m_scene->setActiveLayer("Основной");
+
+        m_undoTimer->stop();
+        saveStateToUndoStack();
+        setUnsavedChanges(true);
+    }
+}
+
+void EditorWindow::onDeleteFloorClicked()
+{
+    QString currentFloorText = ui->cb_active_floor->currentText();
+    int currentLevel = currentFloorText.remove("Этаж ").toInt();
+
+    if (currentLevel == 1) {
+        QMessageBox::warning(this, "Ошибка", "Первый этаж удалить нельзя, он является базовым!");
+        return;
+    }
+
+    QMessageBox::StandardButton reply = QMessageBox::question(this, "Удаление этажа",
+                                                              QString("Вы уверены, что хотите удалить Этаж %1?\n\nВСЕ объекты на этом этаже будут удалены!").arg(currentLevel),
+                                                              QMessageBox::Yes | QMessageBox::No);
+
+    if (reply == QMessageBox::Yes) {
+        QList<QGraphicsItem*> itemsToDelete;
+        for (QGraphicsItem *item : m_scene->items()) {
+            if (BaseEditorItem *bItem = dynamic_cast<BaseEditorItem*>(item)) {
+                if (bItem->levelId() == currentLevel) {
+                    itemsToDelete.append(bItem);
+                }
+            }
+        }
+
+        for (QGraphicsItem *item : itemsToDelete) {
+            m_scene->removeItem(item);
+            delete item;
+        }
+
+        ui->cb_active_floor->removeItem(ui->cb_active_floor->currentIndex());
+
+        ui->cb_active_floor->setCurrentIndex(0);
+        m_scene->setActiveLevel(1);
+
+        m_undoTimer->stop();
+        saveStateToUndoStack();
+        setUnsavedChanges(true);
+    }
 }
