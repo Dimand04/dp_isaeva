@@ -22,6 +22,8 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
+#include "estimatedialog.h"
+#include "viewer3d.h"
 
 EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     QMainWindow(parent),
@@ -141,9 +143,11 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
 
     connect(ui->sb_workspace_width, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
         m_scene->setWorkspaceSize(val, ui->sb_workspace_height->value());
+        setUnsavedChanges(true);
     });
     connect(ui->sb_workspace_height, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double val) {
         m_scene->setWorkspaceSize(ui->sb_workspace_width->value(), val);
+        setUnsavedChanges(true);
     });
 
     m_treeModel = new QStandardItemModel(this);
@@ -207,6 +211,28 @@ EditorWindow::EditorWindow(int projectId, QWidget *parent) :
     connect(ui->cb_floor_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onFloorPropertyChanged);
     connect(ui->cb_roof_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onRoofPropertyChanged);
     connect(ui->cb_furniture_material, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &EditorWindow::onObjectPropertyChanged);
+
+    connect(ui->action_calculate_estimate, &QAction::triggered, this, &EditorWindow::showEstimate);
+
+    connect(m_scene, &EditorScene::itemAdded, this, &EditorWindow::onItemAddedToScene);
+    connect(m_scene, &EditorScene::itemDeleted, this, [this]() {
+        setUnsavedChanges(true);
+        m_undoTimer->stop();
+        saveStateToUndoStack();
+    });
+
+    m_undoTimer = new QTimer(this);
+    m_undoTimer->setSingleShot(true);
+    m_undoTimer->setInterval(300);
+    connect(m_undoTimer, &QTimer::timeout, this, &EditorWindow::saveStateToUndoStack);
+
+    ui->action_undo->setShortcuts(QKeySequence::Undo);
+    ui->action_redo->setShortcuts(QKeySequence::Redo);
+
+    connect(ui->action_undo, &QAction::triggered, this, &EditorWindow::undo);
+    connect(ui->action_redo, &QAction::triggered, this, &EditorWindow::redo);
+
+    connect(ui->action_3D, &QAction::triggered, this, &EditorWindow::onShow3DClicked);
 
     loadProject();
 }
@@ -742,6 +768,11 @@ void EditorWindow::onItemAddedToScene(BaseEditorItem *item)
 
     connect(item, &BaseEditorItem::itemChanged, this, &EditorWindow::onItemChangedInScene);
     ui->objectTreeView->expandAll();
+
+    setUnsavedChanges(true);
+
+    m_undoTimer->stop();
+    saveStateToUndoStack();
 }
 
 void EditorWindow::onItemChangedInScene()
@@ -779,6 +810,8 @@ void EditorWindow::onItemChangedInScene()
             }
         }
     }
+
+    setUnsavedChanges(true);
 }
 
 void EditorWindow::onTreeItemClicked(const QModelIndex &index)
@@ -862,36 +895,15 @@ void EditorWindow::saveProject()
     QString folderPath = FileStorageManager::getProjectFolder(m_projectId);
     QString filePath = folderPath + "/layout.json";
 
-    QJsonArray itemsArray;
+    QByteArray compactData = captureSceneState();
 
-    for (QGraphicsItem *gItem : m_scene->items()) {
-        if (BaseEditorItem *item = dynamic_cast<BaseEditorItem*>(gItem)) {
-            if (FloorItem *floor = dynamic_cast<FloorItem*>(item)) {
-                if (floor->isDrawing()) continue;
-            }
-            if (RoofItem *roof = dynamic_cast<RoofItem*>(item)) {
-                if (roof->isDrawing()) continue;
-            }
-            if (DimensionItem *dim = dynamic_cast<DimensionItem*>(item)) {
-                if (dim->isDrawing()) continue;
-            }
-
-            itemsArray.append(item->toJson());
-        }
-    }
-
-    QJsonObject rootObject;
-    rootObject["version"] = "1.0";
-    rootObject["items"] = itemsArray;
-
-    rootObject["workspace_w"] = m_scene->sceneRect().width();
-    rootObject["workspace_h"] = m_scene->sceneRect().height();
-
-    QJsonDocument doc(rootObject);
+    QJsonDocument doc = QJsonDocument::fromJson(compactData);
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly)) {
         file.write(doc.toJson(QJsonDocument::Indented));
         file.close();
+
+        setUnsavedChanges(false);
         QMessageBox::information(this, "Сохранение", "Проект успешно сохранен!");
     } else {
         QMessageBox::critical(this, "Ошибка", "Не удалось записать файл проекта.");
@@ -905,19 +917,234 @@ void EditorWindow::loadProject()
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
+        m_undoStack.clear();
+        m_undoStack.append(captureSceneState());
+        m_undoIndex = 0;
         return;
     }
 
     QByteArray data = file.readAll();
     file.close();
 
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (!doc.isObject()) return;
+    m_isRestoringState = true;
+    restoreSceneState(data);
+    setUnsavedChanges(false);
+
+    m_undoStack.clear();
+    m_undoStack.append(captureSceneState());
+    m_undoIndex = 0;
+
+    QTimer::singleShot(100, this, [this]() {
+        m_isRestoringState = false;
+    });
+}
+
+void EditorWindow::loadMaterialsForComponent(QComboBox *comboBox, const QString &systemCode)
+{
+    if (!comboBox) return;
+
+    comboBox->blockSignals(true);
+    comboBox->clear();
+
+    comboBox->addItem("— Не выбран —", -1);
+
+    QSqlQuery query;
+    query.prepare("SELECT m.id, m.name "
+                  "FROM materials m "
+                  "JOIN categories c ON m.category_id = c.id "
+                  "WHERE c.system_code = :code "
+                  "ORDER BY m.name ASC");
+    query.bindValue(":code", systemCode);
+
+    if (query.exec()) {
+        while (query.next()) {
+            int id = query.value("id").toInt();
+            QString name = query.value("name").toString();
+
+            comboBox->addItem(name, id);
+        }
+    }
+
+    comboBox->blockSignals(false);
+}
+
+void EditorWindow::initMaterialComboBoxes()
+{
+    loadMaterialsForComponent(ui->cb_foundation_material, "FOUNDATION_MAT");
+    loadMaterialsForComponent(ui->cb_wall_material, "WALL_MAT");
+    loadMaterialsForComponent(ui->cb_node_material, "WALL_MAT");
+    loadMaterialsForComponent(ui->cb_floor_material, "FLOOR_MAT");
+    loadMaterialsForComponent(ui->cb_window_material, "WINDOW_MAT");
+    loadMaterialsForComponent(ui->cb_door_material, "DOOR_MAT");
+    loadMaterialsForComponent(ui->cb_roof_material, "ROOF_MAT");
+    loadMaterialsForComponent(ui->cb_furniture_material, "FURNITURE_MAT");
+}
+
+void EditorWindow::showEstimate()
+{
+    QList<BaseEditorItem*> editorItems;
+    for (QGraphicsItem *gItem : m_scene->items()) {
+        if (BaseEditorItem *bItem = dynamic_cast<BaseEditorItem*>(gItem)) {
+            if (FloorItem *floor = dynamic_cast<FloorItem*>(bItem)) {
+                if (floor->isDrawing()) continue;
+            }
+            if (RoofItem *roof = dynamic_cast<RoofItem*>(bItem)) {
+                if (roof->isDrawing()) continue;
+            }
+            editorItems.append(bItem);
+        }
+    }
+
+    EstimateDialog dialog(editorItems, this);
+    dialog.exec();
+}
+
+void EditorWindow::setUnsavedChanges(bool changed)
+{
+    m_hasUnsavedChanges = changed;
+    QString baseTitle = QString("Визуальный редактор — Проект №%1").arg(m_projectId);
+
+    if (m_hasUnsavedChanges) {
+        setWindowTitle(baseTitle + " *");
+        if (!m_isRestoringState && m_undoTimer) {
+            m_undoTimer->start();
+        }
+    } else {
+        setWindowTitle(baseTitle);
+    }
+}
+
+void EditorWindow::closeEvent(QCloseEvent *event)
+{
+    if (m_hasUnsavedChanges) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Сохранение");
+        msgBox.setText("В проекте есть несохраненные изменения.\nСохранить их перед выходом?");
+        msgBox.setIcon(QMessageBox::Question);
+
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+        msgBox.setButtonText(QMessageBox::Yes, "Сохранить");
+        msgBox.setButtonText(QMessageBox::No, "Не сохранять");
+        msgBox.setButtonText(QMessageBox::Cancel, "Отмена");
+
+        msgBox.setDefaultButton(QMessageBox::Yes);
+
+        int resBtn = msgBox.exec();
+
+        if (resBtn == QMessageBox::Yes) {
+            saveProject();
+            if (!m_hasUnsavedChanges) {
+                event->accept();
+            } else {
+                event->ignore();
+            }
+        } else if (resBtn == QMessageBox::No) {
+            event->accept();
+        } else {
+            event->ignore();
+        }
+    } else {
+        event->accept();
+    }
+}
+
+QByteArray EditorWindow::captureSceneState()
+{
+    QJsonArray itemsArray;
+    for (QGraphicsItem *gItem : m_scene->items()) {
+        if (BaseEditorItem *item = dynamic_cast<BaseEditorItem*>(gItem)) {
+            if (FloorItem *floor = dynamic_cast<FloorItem*>(item)) { if (floor->isDrawing()) continue; }
+            if (RoofItem *roof = dynamic_cast<RoofItem*>(item)) { if (roof->isDrawing()) continue; }
+            if (DimensionItem *dim = dynamic_cast<DimensionItem*>(item)) { if (dim->isDrawing()) continue; }
+            itemsArray.append(item->toJson());
+        }
+    }
+
+    QJsonObject rootObject;
+    rootObject["version"] = "1.0";
+    rootObject["items"] = itemsArray;
+    rootObject["workspace_w"] = m_scene->sceneRect().width();
+    rootObject["workspace_h"] = m_scene->sceneRect().height();
+
+    return QJsonDocument(rootObject).toJson(QJsonDocument::Compact);
+}
+
+void EditorWindow::saveStateToUndoStack()
+{
+    if (m_isRestoringState) return;
+
+    QByteArray currentState = captureSceneState();
+
+    if (m_undoIndex >= 0 && m_undoIndex < m_undoStack.size()) {
+        if (m_undoStack[m_undoIndex] == currentState) return;
+    }
+
+    if (m_undoIndex < m_undoStack.size() - 1) {
+        m_undoStack.erase(m_undoStack.begin() + m_undoIndex + 1, m_undoStack.end());
+    }
+
+    m_undoStack.append(currentState);
+
+    if (m_undoStack.size() > 50) {
+        m_undoStack.removeFirst();
+    } else {
+        m_undoIndex++;
+    }
+}
+
+void EditorWindow::undo()
+{
+    if (m_undoIndex > 0) {
+        m_isRestoringState = true;
+        m_undoTimer->stop();
+
+        m_undoIndex--;
+        restoreSceneState(m_undoStack[m_undoIndex]);
+        setUnsavedChanges(true);
+
+        QTimer::singleShot(100, this, [this]() {
+            m_isRestoringState = false;
+        });
+    }
+}
+
+void EditorWindow::redo()
+{
+    if (m_undoIndex < m_undoStack.size() - 1) {
+        m_isRestoringState = true;
+        m_undoTimer->stop();
+
+        m_undoIndex++;
+        restoreSceneState(m_undoStack[m_undoIndex]);
+        setUnsavedChanges(true);
+
+        QTimer::singleShot(100, this, [this]() {
+            m_isRestoringState = false;
+        });
+    }
+}
+
+void EditorWindow::restoreSceneState(const QByteArray &stateData)
+{
+    m_trackedItem = nullptr;
+    ui->stackedWidget->setCurrentIndex(0);
+
+    QJsonDocument doc = QJsonDocument::fromJson(stateData);
+    if (!doc.isObject()) {
+        return;
+    }
 
     QJsonObject rootObject = doc.object();
 
     if (rootObject.contains("workspace_w") && rootObject.contains("workspace_h")) {
         m_scene->setSceneRect(0, 0, rootObject["workspace_w"].toDouble(), rootObject["workspace_h"].toDouble());
+        ui->sb_workspace_width->blockSignals(true);
+        ui->sb_workspace_height->blockSignals(true);
+        ui->sb_workspace_width->setValue(m_scene->workspaceSize().width());
+        ui->sb_workspace_height->setValue(m_scene->workspaceSize().height());
+        ui->sb_workspace_width->blockSignals(false);
+        ui->sb_workspace_height->blockSignals(false);
     }
 
     QJsonArray itemsArray = rootObject["items"].toArray();
@@ -939,7 +1166,6 @@ void EditorWindow::loadProject()
 
     QSet<int> uniqueLevels;
     QSet<QString> uniqueLayers;
-
     for (QGraphicsItem *item : m_scene->items()) {
         if (BaseEditorItem *bItem = dynamic_cast<BaseEditorItem*>(item)) {
             uniqueLevels.insert(bItem->levelId());
@@ -1000,43 +1226,11 @@ void EditorWindow::loadProject()
     }
 }
 
-void EditorWindow::loadMaterialsForComponent(QComboBox *comboBox, const QString &systemCode)
+void EditorWindow::onShow3DClicked()
 {
-    if (!comboBox) return;
+    saveProject();
 
-    comboBox->blockSignals(true);
-    comboBox->clear();
-
-    comboBox->addItem("— Не выбран —", -1);
-
-    QSqlQuery query;
-    query.prepare("SELECT m.id, m.name "
-                  "FROM materials m "
-                  "JOIN categories c ON m.category_id = c.id "
-                  "WHERE c.system_code = :code "
-                  "ORDER BY m.name ASC");
-    query.bindValue(":code", systemCode);
-
-    if (query.exec()) {
-        while (query.next()) {
-            int id = query.value("id").toInt();
-            QString name = query.value("name").toString();
-
-            comboBox->addItem(name, id);
-        }
-    }
-
-    comboBox->blockSignals(false);
-}
-
-void EditorWindow::initMaterialComboBoxes()
-{
-    loadMaterialsForComponent(ui->cb_foundation_material, "FOUNDATION_MAT");
-    loadMaterialsForComponent(ui->cb_wall_material, "WALL_MAT");
-    loadMaterialsForComponent(ui->cb_node_material, "WALL_MAT");
-    loadMaterialsForComponent(ui->cb_floor_material, "FLOOR_MAT");
-    loadMaterialsForComponent(ui->cb_window_material, "WINDOW_MAT");
-    loadMaterialsForComponent(ui->cb_door_material, "DOOR_MAT");
-    loadMaterialsForComponent(ui->cb_roof_material, "ROOF_MAT");
-    loadMaterialsForComponent(ui->cb_furniture_material, "FURNITURE_MAT");
+    QString filePath = FileStorageManager::getProjectFolder(m_projectId) + "/layout.json";
+    Viewer3D *viewer = new Viewer3D(filePath);
+    viewer->show();
 }

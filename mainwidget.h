@@ -25,25 +25,25 @@ protected:
 private slots:
     void sw_main_change(int index);
 
-    void logout(); // выход из аккаунта
-    void loadUserInfo(); // загрузка ника пользователя
-    void loadAdminUsers(); // загрузка списка пользователей
-    void filterAdminUsers(const QString &searchText); // поиск по пользователям
-    void loadAdminRoles(); // загрузка списка ролей
-    void filterAdminRoles(const QString &searchText); // поиск по ролям
-    void openRoleEditor(int roleId = -1); // вызов roleeditordialog
-    void openUserEditor(int targetUserId = -1); // вызов usereditordialog
-    void fillNSITypes(); // отрисовка таблицы справочников
-    void loadNsiTable(const QString &tableName, const QString &headerLabel); // загрузка детальной таблицы
-    void filterNSITable(const QString &searchText); // поиск по данным
-    void openNsiEditor(int itemId = -1); // вызов виджета редактирования справочников
-    void loadClientsTable(); // формирование таблицы клиентов
-    void filterClientsTable(const QString &searchText); // поиск по клиентам
-    void clearClientDetailsUI(); // Очистка всех полей и вкладок
-    void loadClientDetails(int clientId); // загрузка данных клиента
-    void loadProjectsTable(); // формирование таблицы проектов
-    void setupProjectFilters(); // настройка фильтров проектов
-    void applyProjectFilters(); // фильтрация списка проектов
+    void logout();
+    void loadUserInfo();
+    void loadAdminUsers();
+    void filterAdminUsers(const QString &searchText);
+    void loadAdminRoles();
+    void filterAdminRoles(const QString &searchText);
+    void openRoleEditor(int roleId = -1);
+    void openUserEditor(int targetUserId = -1);
+    void fillNSITypes();
+    void loadNsiTable(const QString &tableName, const QString &headerLabel);
+    void filterNSITable(const QString &searchText);
+    void openNsiEditor(int itemId = -1);
+    void loadClientsTable();
+    void filterClientsTable(const QString &searchText);
+    void clearClientDetailsUI();
+    void loadClientDetails(int clientId);
+    void loadProjectsTable();
+    void setupProjectFilters();
+    void applyProjectFilters();
     void clearProjectDetailsUI();
     void loadProjectDetails(int projectId);
     void loadClientProjects(int clientId);
@@ -61,25 +61,25 @@ private slots:
     // Спорно
     void updateCatalogLayout();
 
-    void on_lw_admin_roles_itemSelectionChanged(); // выбор роли
+    void on_lw_admin_roles_itemSelectionChanged();
 
-    void on_pb_admin_role_edit_clicked(); // редактирование роли
+    void on_pb_admin_role_edit_clicked();
 
-    void on_pb_admin_role_delete_clicked(); // удаление роли
+    void on_pb_admin_role_delete_clicked();
 
-    void on_lw_admin_users_itemSelectionChanged(); // выбор пользователя
+    void on_lw_admin_users_itemSelectionChanged();
 
-    void on_pb_admin_user_edit_clicked(); // редактирование пользователя
+    void on_pb_admin_user_edit_clicked();
 
-    void on_lw_nsi_types_itemSelectionChanged(); // выбор справочника
+    void on_lw_nsi_types_itemSelectionChanged();
 
-    void on_pb_nsi_edit_clicked(); // редактирование айтема
+    void on_pb_nsi_edit_clicked();
 
-    void on_tw_nsi_itemSelectionChanged(); // выбор айтема справочника
+    void on_tw_nsi_itemSelectionChanged();
 
-    void on_pb_nsi_delete_clicked(); // удаление записи справочника
+    void on_pb_nsi_delete_clicked();
 
-    void on_pb_admin_user_delete_clicked(); // удаление пользователя
+    void on_pb_admin_user_delete_clicked();
 
     void on_tw_clients_itemSelectionChanged();
 

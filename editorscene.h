@@ -42,6 +42,7 @@ signals:
     void cursorMoved(const QPointF &scenePos);
     void toolModeChanged(ToolMode mode);
     void itemAdded(BaseEditorItem *item);
+    void itemDeleted();
 
 protected:
     void drawBackground(QPainter *painter, const QRectF &rect) override;

@@ -1,4 +1,4 @@
-QT       += core gui sql
+QT       += core gui sql 3dcore 3drender 3dinput 3dlogic 3dextras
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -18,6 +18,7 @@ SOURCES += \
     editorscene.cpp \
     editorview.cpp \
     editorwindow.cpp \
+    estimatedialog.cpp \
     filestoragemanager.cpp \
     flooritem.cpp \
     foundationblockitem.cpp \
@@ -35,6 +36,7 @@ SOURCES += \
     simpledicteditordialog.cpp \
     textitem.cpp \
     usereditordialog.cpp \
+    viewer3d.cpp \
     wallitem.cpp \
     windowitem.cpp
 
@@ -48,6 +50,7 @@ HEADERS += \
     editorscene.h \
     editorview.h \
     editorwindow.h \
+    estimatedialog.h \
     filestoragemanager.h \
     flooritem.h \
     foundationblockitem.h \
@@ -64,6 +67,7 @@ HEADERS += \
     simpledicteditordialog.h \
     textitem.h \
     usereditordialog.h \
+    viewer3d.h \
     wallitem.h \
     windowitem.h
 
@@ -71,6 +75,7 @@ FORMS += \
     authwidget.ui \
     clienteditordialog.ui \
     editorwindow.ui \
+    estimatedialog.ui \
     mainwidget.ui \
     materialeditordialog.ui \
     paymentdialog.ui \

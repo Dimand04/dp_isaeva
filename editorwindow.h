@@ -6,7 +6,11 @@
 #include "baseeditoritem.h"
 #include <QLabel>
 #include <QStandardItemModel>
-#include "roofitem.h"
+#include <QCloseEvent>
+#include <QList>
+#include <QByteArray>
+#include <QTimer>
+#include <QShortcut>
 
 namespace Ui {
 class EditorWindow;
@@ -39,6 +43,14 @@ private slots:
     void onFloorPropertyChanged();
     void onRoofPropertyChanged();
     void onObjectPropertyChanged();
+    void showEstimate();
+    void undo();
+    void redo();
+    void saveStateToUndoStack();
+    void onShow3DClicked();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     Ui::EditorWindow *ui;
@@ -50,6 +62,15 @@ private:
     QStandardItem* getOrCreateLayerNode(int levelId, const QString &layerName);
     void loadMaterialsForComponent(class QComboBox *comboBox, const QString &systemCode);
     void initMaterialComboBoxes();
+    bool m_hasUnsavedChanges = false;
+    void setUnsavedChanges(bool changed);
+    QList<QByteArray> m_undoStack;
+    int m_undoIndex = -1;
+    bool m_isRestoringState = false;
+    QTimer *m_undoTimer;
+
+    QByteArray captureSceneState();
+    void restoreSceneState(const QByteArray &stateData);
 };
 
 Q_DECLARE_METATYPE(BaseEditorItem*)

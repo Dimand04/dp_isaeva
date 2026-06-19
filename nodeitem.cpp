@@ -168,6 +168,8 @@ QJsonObject NodeItem::toJson() const
     json["is_rounded"] = m_isRounded;
     json["rotation_angle"] = rotation();
 
+    json["wall_height"] = maxAttachedWallHeight();
+
     return json;
 }
 

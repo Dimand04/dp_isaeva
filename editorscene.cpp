@@ -391,6 +391,10 @@ void EditorScene::deleteSelectedItems()
         removeItem(item);
         delete item;
     }
+
+    if (!itemsToDelete.isEmpty()) {
+        emit itemDeleted();
+    }
 }
 
 void EditorScene::keyPressEvent(QKeyEvent *event)
