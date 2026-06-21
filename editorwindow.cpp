@@ -908,6 +908,25 @@ void EditorWindow::saveProject()
 
         setUnsavedChanges(false);
         QMessageBox::information(this, "Сохранение", "Проект успешно сохранен!");
+
+        m_scene->clearSelection();
+        QRectF rect = m_scene->itemsBoundingRect();
+
+        if (!rect.isEmpty()) {
+            rect.adjust(-50, -50, 50, 50);
+
+            QImage img(rect.size().toSize(), QImage::Format_ARGB32);
+            img.fill(QColor(210, 210, 210));
+
+            QPainter painter(&img);
+            painter.setRenderHint(QPainter::Antialiasing);
+
+            m_scene->render(&painter, QRectF(img.rect()), rect);
+            painter.end();
+
+            img.save(folderPath + "/preview_2d.png");
+        }
+
     } else {
         QMessageBox::critical(this, "Ошибка", "Не удалось записать файл проекта.");
     }

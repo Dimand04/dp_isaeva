@@ -1690,16 +1690,10 @@ void MainWidget::loadExportData()
     ui->cb_export_doc_type->clear();
     ui->cb_export_doc_type->addItem("Смета проекта", "estimate");
     ui->cb_export_doc_type->addItem("Договор подряда", "contract");
+    ui->cb_export_doc_type->addItem("Схема / Чертёж (JSON)", "layout");
     ui->cb_export_doc_type->blockSignals(false);
 
-    ui->cb_export_format->blockSignals(true);
-    ui->cb_export_format->clear();
-    ui->cb_export_format->addItem("PDF документ (*.pdf)", "pdf");
-    ui->cb_export_format->addItem("HTML веб-страница (*.html)", "html");
-    ui->cb_export_format->addItem("CSV таблица для Excel (*.csv)", "csv");
-    ui->cb_export_format->blockSignals(false);
-
-    updateExportPreview();
+    on_cb_export_doc_type_currentIndexChanged(0);
 }
 
 void MainWidget::updateExportPreview()
@@ -1816,6 +1810,27 @@ void MainWidget::updateExportPreview()
         html += QString("<td width='50%' valign='top'><b>ЗАКАЗЧИК:</b><br/>%1<br/>Адрес: %2<br/>Тел: %3<br/><br/><br/>___________ / ___________</td>")
                     .arg(clientName, clientAddress, clientPhone);
         html += "</tr></table>";
+    }
+    else if (docType == "layout") {
+        QString folderPath = FileStorageManager::getProjectFolder(projectId);
+        QString filePath = folderPath + "/layout.json";
+
+        html += QString("<h2 style='text-align: center; color: #333;'>ЧЕРТЁЖ ПРОЕКТА (JSON)</h2>");
+        html += QString("<h3 style='text-align: center; color: #666;'>по объекту: %1</h3>").arg(projectName);
+
+        QFile file(filePath);
+        if (file.exists() && file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QString jsonContent = file.readAll();
+            file.close();
+            html += "<p style='color: green;'><b>Статус:</b> Файл чертежа найден и готов к экспорту.</p>";
+            html += "<p><b>Предпросмотр данных (сырой код):</b></p>";
+            html += QString("<pre style='background-color: #f4f4f4; padding: 10px; border: 1px solid #ddd; border-radius: 5px; white-space: pre-wrap; font-size: 11px;'>%1</pre>")
+                        .arg(jsonContent.toHtmlEscaped());
+        } else {
+            html += "<h3 style='color: red; text-align: center; margin-top: 20px;'>Файл чертежа (layout.json) не найден!</h3>";
+            html += "<p style='text-align: center;'>Возможно, вы еще не сохраняли чертёж в 2D-редакторе для этого проекта.</p>";
+            ui->pb_export_save->setEnabled(false);
+        }
     }
 
     html += "</body></html>";
@@ -1975,6 +1990,8 @@ void MainWidget::loadProjectsTable()
 
 void MainWidget::on_tw_projects_list_itemSelectionChanged()
 {
+    ui->splitter_5->setSizes({1, 1});
+
     QTableWidgetItem *selectedItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
     bool hasSelection = (selectedItem != nullptr);
 
@@ -1991,8 +2008,32 @@ void MainWidget::on_tw_projects_list_itemSelectionChanged()
     loadProjectStages(projectId);
     loadProjectEstimates(projectId);
     loadProjectFiles(projectId);
+    loadProjectPreviews(projectId);
+}
 
-    ui->splitter_5->setSizes({1, 1});
+void MainWidget::loadProjectPreviews(int projectId)
+{
+    QString folderPath = FileStorageManager::getProjectFolder(projectId);
+    QString path2d = folderPath + "/preview_2d.png";
+    QString path3d = folderPath + "/preview_3d.png";
+
+    if (QFile::exists(path2d)) {
+        QPixmap pix2d(path2d);
+        ui->lb_preview_2d->setPixmap(pix2d.scaled(ui->lb_preview_2d->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    } else {
+        ui->lb_preview_2d->clear();
+        ui->lb_preview_2d->setText("2D превью отсутствует.\nСохраните чертеж в редакторе.");
+        ui->lb_preview_2d->setAlignment(Qt::AlignCenter);
+    }
+
+    if (QFile::exists(path3d)) {
+        QPixmap pix3d(path3d);
+        ui->lb_preview_3d->setPixmap(pix3d.scaled(ui->lb_preview_3d->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    } else {
+        ui->lb_preview_3d->clear();
+        ui->lb_preview_3d->setText("3D превью отсутствует.\nОткройте и закройте 3D-вид.");
+        ui->lb_preview_3d->setAlignment(Qt::AlignCenter);
+    }
 }
 
 void MainWidget::clearProjectDetailsUI()
@@ -2713,6 +2754,22 @@ void MainWidget::on_cb_export_project_currentIndexChanged(int index)
 void MainWidget::on_cb_export_doc_type_currentIndexChanged(int index)
 {
     Q_UNUSED(index);
+    QString docType = ui->cb_export_doc_type->currentData().toString();
+
+    ui->cb_export_format->blockSignals(true);
+    ui->cb_export_format->clear();
+
+    if (docType == "layout") {
+        ui->cb_export_format->addItem("JSON файл чертежа (*.json)", "json");
+    } else {
+        ui->cb_export_format->addItem("PDF документ (*.pdf)", "pdf");
+        ui->cb_export_format->addItem("HTML веб-страница (*.html)", "html");
+        if (docType == "estimate") {
+            ui->cb_export_format->addItem("CSV таблица для Excel (*.csv)", "csv");
+        }
+    }
+    ui->cb_export_format->blockSignals(false);
+
     updateExportPreview();
 }
 
@@ -2725,25 +2782,38 @@ void MainWidget::on_pb_export_save_clicked()
 
     if (projectId == 0) return;
 
-    if (docType == "contract" && format == "csv") {
-        QMessageBox::warning(this, "Внимание", "Формат CSV не подходит для текстового договора. Выберите PDF или HTML.");
-        return;
-    }
-
     QString defaultFilter;
     if (format == "pdf") defaultFilter = "PDF (*.pdf)";
     else if (format == "html") defaultFilter = "HTML (*.html)";
     else if (format == "csv") defaultFilter = "CSV (*.csv)";
+    else if (format == "json") defaultFilter = "JSON (*.json)";
+
+    QString docPrefix;
+    if (docType == "estimate") docPrefix = "Smeta";
+    else if (docType == "contract") docPrefix = "Dogovor";
+    else if (docType == "layout") docPrefix = "Layout";
 
     QString defaultFileName = QString("%1_%2.%3")
-                                  .arg(docType == "estimate" ? "Smeta" : "Dogovor")
+                                  .arg(docPrefix)
                                   .arg(projectName.replace(QRegularExpression("[\\\\/:*?\"<>|]"), "_"))
                                   .arg(format);
 
     QString savePath = QFileDialog::getSaveFileName(this, "Сохранить документ", defaultFileName, defaultFilter);
     if (savePath.isEmpty()) return;
 
-    if (format == "pdf") {
+    if (format == "json") {
+        QString sourcePath = FileStorageManager::getProjectFolder(projectId) + "/layout.json";
+
+        if (QFile::exists(savePath)) {
+            QFile::remove(savePath);
+        }
+
+        if (!QFile::copy(sourcePath, savePath)) {
+            QMessageBox::critical(this, "Ошибка", "Не удалось скопировать файл чертежа!");
+            return;
+        }
+    }
+    else if (format == "pdf") {
         QPdfWriter pdfWriter(savePath);
         pdfWriter.setPageSize(QPageSize(QPageSize::A4));
         pdfWriter.setResolution(300);
@@ -2776,9 +2846,7 @@ void MainWidget::on_pb_export_save_clicked()
 
             out << "Компания:;" << compName << "\n";
             out << "Юр. адрес:;" << compAddress << "\n";
-            out << "Тел.:;" << compPhone << "\n";
-            out << "\n";
-
+            out << "Тел.:;" << compPhone << "\n\n";
             out << "Группа;Наименование;Количество;Цена за ед.;Сумма\n";
 
             QSqlDatabase db = QSqlDatabase::database();

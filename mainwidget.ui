@@ -806,7 +806,7 @@
             <item row="3" column="0">
              <widget class="QTabWidget" name="tabWidget_3">
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <widget class="QWidget" name="tab_7">
                <attribute name="title">
@@ -975,7 +975,7 @@
                  <number>3</number>
                 </property>
                 <item row="0" column="0">
-                 <widget class="QLabel" name="label_18">
+                 <widget class="QLabel" name="lb_preview_2d">
                   <property name="frameShape">
                    <enum>QFrame::Shape::Box</enum>
                   </property>
@@ -983,17 +983,20 @@
                    <string/>
                   </property>
                   <property name="scaledContents">
-                   <bool>false</bool>
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
                 <item row="1" column="0">
-                 <widget class="QLabel" name="label_19">
+                 <widget class="QLabel" name="lb_preview_3d">
                   <property name="frameShape">
                    <enum>QFrame::Shape::Box</enum>
                   </property>
                   <property name="text">
                    <string/>
+                  </property>
+                  <property name="scaledContents">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>

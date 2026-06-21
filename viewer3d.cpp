@@ -13,6 +13,11 @@
 #include <Qt3DCore/QGeometry>
 #include <Qt3DCore/QAttribute>
 #include <Qt3DCore/QBuffer>
+#include <QEvent>
+#include <QPixmap>
+#include <QFileInfo>
+#include <QScreen>
+#include <QWindow>
 
 static Qt3DExtras::QPhongMaterial* createMaterial(QColor diffuse, float shininess = 0.0f, QColor specular = QColor(15, 15, 15)) {
     Qt3DExtras::QPhongMaterial *mat = new Qt3DExtras::QPhongMaterial();
@@ -223,7 +228,28 @@ Viewer3D::Viewer3D(const QString &jsonFilePath)
     buildSceneFromJson(jsonFilePath);
 
     m_view->setRootEntity(m_rootEntity);
+
+    m_view->setProperty("savePath", QFileInfo(jsonFilePath).absolutePath() + "/preview_3d.png");
 }
+
+class ViewerCloseFilter : public QObject {
+public:
+    QString savePath;
+    QWindow *viewWindow;
+
+    ViewerCloseFilter(const QString& path, QWindow *view, QObject *parent = nullptr)
+        : QObject(parent), savePath(path), viewWindow(view) {}
+
+    bool eventFilter(QObject *obj, QEvent *event) override {
+        if (event->type() == QEvent::Close) {
+            if (QScreen *screen = viewWindow->screen()) {
+                QPixmap screenshot = screen->grabWindow(viewWindow->winId());
+                screenshot.save(savePath);
+            }
+        }
+        return QObject::eventFilter(obj, event);
+    }
+};
 
 void Viewer3D::show()
 {
@@ -232,6 +258,10 @@ void Viewer3D::show()
     container->setWindowTitle("3D Визуализация проекта");
 
     container->setAttribute(Qt::WA_DeleteOnClose);
+
+    QString savePath = m_view->property("savePath").toString();
+
+    container->installEventFilter(new ViewerCloseFilter(savePath, m_view, container));
 
     QObject::connect(container, &QWidget::destroyed, [this]() {
         delete this;

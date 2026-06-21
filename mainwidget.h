@@ -57,6 +57,7 @@ private slots:
     void updateExportPreview();
     void loadCompanySettings();
     void saveCompanySettings();
+    void loadProjectPreviews(int projectId);
 
     // Спорно
     void updateCatalogLayout();
