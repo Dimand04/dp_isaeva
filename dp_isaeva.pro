@@ -29,7 +29,6 @@ SOURCES += \
     objectitem.cpp \
     paymentdialog.cpp \
     projecteditordialog.cpp \
-    projectestimatedialog.cpp \
     projectstagedialog.cpp \
     roleeditordialog.cpp \
     roofitem.cpp \
@@ -60,7 +59,6 @@ HEADERS += \
     objectitem.h \
     paymentdialog.h \
     projecteditordialog.h \
-    projectestimatedialog.h \
     projectstagedialog.h \
     roleeditordialog.h \
     roofitem.h \
@@ -80,7 +78,6 @@ FORMS += \
     materialeditordialog.ui \
     paymentdialog.ui \
     projecteditordialog.ui \
-    projectestimatedialog.ui \
     projectstagedialog.ui \
     roleeditordialog.ui \
     simpledicteditordialog.ui \

@@ -101,8 +101,27 @@ void EstimateDialog::calculateEstimate(const QList<BaseEditorItem*> &items)
         }
     }
 
+    QMap<QString, int> defaultMaterials;
+    if (query.exec("SELECT c.system_code, MIN(m.id) FROM categories c JOIN materials m ON m.category_id = c.id GROUP BY c.system_code")) {
+        while (query.next()) {
+            defaultMaterials[query.value(0).toString()] = query.value(1).toInt();
+        }
+    }
+
     for (BaseEditorItem *item : items) {
         int matId = item->materialId();
+
+        // === ИСПРАВЛЕНИЕ: Добавлен NodeItem (Узлы/Углы стен), чтобы их объем не терялся ===
+        if (matId == -1) {
+            if (dynamic_cast<FoundationBlockItem*>(item)) matId = defaultMaterials["FOUNDATION_MAT"];
+            else if (dynamic_cast<WallItem*>(item)) matId = defaultMaterials["WALL_MAT"];
+            else if (dynamic_cast<FloorItem*>(item)) matId = defaultMaterials["FLOOR_MAT"];
+            else if (dynamic_cast<RoofItem*>(item)) matId = defaultMaterials["ROOF_MAT"];
+            else if (dynamic_cast<WindowItem*>(item)) matId = defaultMaterials["WINDOW_MAT"];
+            else if (dynamic_cast<DoorItem*>(item)) matId = defaultMaterials["DOOR_MAT"];
+            else if (dynamic_cast<NodeItem*>(item)) matId = defaultMaterials["WALL_MAT"];
+        }
+
         if (matId != -1 && estimateData.contains(matId)) {
             QString unit = estimateData[matId].unit;
             double qty = extractQuantityByUnit(item, unit);
@@ -114,6 +133,9 @@ void EstimateDialog::calculateEstimate(const QList<BaseEditorItem*> &items)
     double totalProjectCost = 0.0;
     ui->tableWidget->setRowCount(0);
 
+    // === ИСПРАВЛЕНИЕ: Используем русскую локаль для идеального совпадения стилей ===
+    QLocale loc(QLocale::Russian, QLocale::Russia);
+
     for (auto it = estimateData.begin(); it != estimateData.end(); ++it) {
         if (it.value().quantity > 0.0001) {
             int row = ui->tableWidget->rowCount();
@@ -122,16 +144,33 @@ void EstimateDialog::calculateEstimate(const QList<BaseEditorItem*> &items)
             double sum = it.value().quantity * it.value().price;
             totalProjectCost += sum;
 
+            // Наименование
             ui->tableWidget->setItem(row, 0, new QTableWidgetItem(it.value().name));
-            ui->tableWidget->setItem(row, 1, new QTableWidgetItem(it.value().unit));
 
-            QString qtyStr = (it.value().unit == "шт") ? QString::number(it.value().quantity, 'f', 0) : QString::number(it.value().quantity, 'f', 2);
-            ui->tableWidget->setItem(row, 2, new QTableWidgetItem(qtyStr));
+            // Ед. изм. (По центру)
+            QTableWidgetItem *unitItem = new QTableWidgetItem(it.value().unit);
+            unitItem->setTextAlignment(Qt::AlignCenter);
+            ui->tableWidget->setItem(row, 1, unitItem);
 
-            ui->tableWidget->setItem(row, 3, new QTableWidgetItem(QString::number(it.value().price, 'f', 2)));
-            ui->tableWidget->setItem(row, 4, new QTableWidgetItem(QString::number(sum, 'f', 2)));
+            // Количество
+            QString qtyStr = (it.value().unit == "шт") ? QString::number(it.value().quantity, 'f', 0) : QString::number(it.value().quantity, 'f', 3);
+            QTableWidgetItem *qtyItem = new QTableWidgetItem(qtyStr);
+            qtyItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            ui->tableWidget->setItem(row, 2, qtyItem);
+
+            // Цена (форматированная с ₽)
+            QTableWidgetItem *priceItem = new QTableWidgetItem(loc.toString(it.value().price, 'f', 2) + " ₽");
+            priceItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            ui->tableWidget->setItem(row, 3, priceItem);
+
+            // Сумма (жирная, форматированная с ₽)
+            QTableWidgetItem *sumItem = new QTableWidgetItem(loc.toString(sum, 'f', 2) + " ₽");
+            sumItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            sumItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+            ui->tableWidget->setItem(row, 4, sumItem);
         }
     }
 
-    ui->lbl_total->setText(QString("ИТОГО ПО ПРОЕКТУ: %1 руб.").arg(totalProjectCost, 0, 'f', 2));
+    // Итоговая сумма
+    ui->lbl_total->setText(QString("ИТОГО ПО ПРОЕКТУ: %1").arg(loc.toString(totalProjectCost, 'f', 2) + " ₽"));
 }

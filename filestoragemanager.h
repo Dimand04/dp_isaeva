@@ -12,6 +12,7 @@ public:
 
     static bool ensureFolderExists(const QString &path);
     static QString copyFileToStorage(const QString &sourceFilePath, const QString &destinationFolder);
+    static QString getTemplateFolder(int templateId);
 };
 
 #endif // FILESTORAGEMANAGER_H

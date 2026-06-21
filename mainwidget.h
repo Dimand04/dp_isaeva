@@ -58,9 +58,9 @@ private slots:
     void loadCompanySettings();
     void saveCompanySettings();
     void loadProjectPreviews(int projectId);
-
-    // Спорно
-    void updateCatalogLayout();
+    void initCatalog();
+    void loadCatalogData();
+    void filterCatalog();
 
     void on_lw_admin_roles_itemSelectionChanged();
 
@@ -104,14 +104,6 @@ private slots:
 
     void on_pb_stage_delete_clicked();
 
-    void on_tw_project_estimates_itemSelectionChanged();
-
-    void on_pb_estimate_add_clicked();
-
-    void on_pb_estimate_edit_clicked();
-
-    void on_pb_estimate_delete_clicked();
-
     void on_pb_client_project_add_clicked();
 
     void on_pb_project_file_add_clicked();
@@ -151,6 +143,8 @@ private slots:
     void on_pb_select_logo_clicked();
 
     void on_pb_open_editor_clicked();
+
+    void on_lw_catalog_itemSelectionChanged();
 
 private:
     Ui::MainWidget *ui;

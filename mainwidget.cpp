@@ -14,12 +14,32 @@
 #include "paymentdialog.h"
 #include "projecteditordialog.h"
 #include "projectstagedialog.h"
-#include "projectestimatedialog.h"
 #include <QFileDialog>
 #include "filestoragemanager.h"
 #include <QDesktopServices>
 #include <QPdfWriter>
 #include "editorwindow.h"
+#include <QFrame>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QEvent>
+#include <QVariant>
+#include <QTimer>
+#include <QListWidget>
+#include "wallitem.h"
+#include "flooritem.h"
+#include "roofitem.h"
+#include "windowitem.h"
+#include "dooritem.h"
+#include "foundationblockitem.h"
+#include "nodeitem.h"
+#include "objectitem.h"
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QImageReader>
+#include <QGraphicsScene>
 
 MainWidget::MainWidget(int userId, QWidget *parent)
     : QWidget(parent)
@@ -31,7 +51,6 @@ MainWidget::MainWidget(int userId, QWidget *parent)
     ui->splitter->setSizes({150, 800});
 
     connect(ui->lw_main, &QListWidget::currentRowChanged, this, &MainWidget::sw_main_change);
-    connect(ui->splitter_4, &QSplitter::splitterMoved, this, &MainWidget::updateCatalogLayout);
     connect(ui->pb_logout, &QPushButton::clicked, this, &MainWidget::logout);
     connect(ui->le_adminUserSearch, &QLineEdit::textChanged, this, &MainWidget::filterAdminUsers);
     connect(ui->le_adminRoleSearch, &QLineEdit::textChanged, this, &MainWidget::filterAdminRoles);
@@ -66,10 +85,22 @@ MainWidget::MainWidget(int userId, QWidget *parent)
         }
     });
 
+    connect(ui->le_catalog_search, &QLineEdit::textChanged, this, &MainWidget::filterCatalog);
+    connect(ui->cb_catalog_category, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::filterCatalog);
+
+    connect(ui->sb_catalog_max_area, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MainWidget::filterCatalog);
+    connect(ui->sb_catalog_max_price, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, &MainWidget::filterCatalog);
+
+    connect(ui->cb_catalog_floors, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWidget::filterCatalog);
+
     ui->lw_main->setCurrentRow(0);
     loadUserInfo();
 
     setupProjectFilters();
+
+    initCatalog();
+
+    showMaximized();
 }
 
 MainWidget::~MainWidget()
@@ -123,6 +154,12 @@ void MainWidget::sw_main_change(int index)
 
     case 3:
         qDebug() << "Каталог";
+
+        ui->splitter_4->setSizes({1, 0});
+
+        if (ui->lw_catalog->count() == 0) {
+            loadCatalogData();
+        }
         break;
 
     case 4:
@@ -266,47 +303,6 @@ void MainWidget::applyProjectFilters()
 
         ui->tw_projects_list->setRowHidden(row, !(matchStatus && matchText));
     }
-}
-
-void MainWidget::updateCatalogLayout()
-{
-    if (!ui->gridLayout_catalog) return;
-
-    // 1. Сначала извлекаем все существующие карточки из сетки в список
-    QList<QWidget*> cards;
-    QLayoutItem *item;
-    while ((item = ui->gridLayout_catalog->takeAt(0)) != nullptr) {
-        if (QWidget *w = item->widget()) {
-            cards.append(w);
-        }
-        delete item; // Удаляем только элемент лейаута, не сам виджет
-    }
-
-    // 2. Считаем количество колонок
-    int availableWidth = ui->scrollArea_catalog->viewport()->width();
-    int cardWidth = 210;
-    int spacing = 0;
-    int columns = qMax(1, (availableWidth - 20) / (cardWidth + spacing));
-
-    // 3. Расставляем карточки заново из нашего списка
-    for (int i = 0; i < cards.size(); ++i) {
-        int row = i / columns;
-        int col = i % columns;
-
-        // Добавляем карточку с выравниванием по левому верхнему углу,
-        // чтобы они не растягивались внутри ячеек
-        ui->gridLayout_catalog->addWidget(cards[i], row, col, Qt::AlignLeft | Qt::AlignTop);
-    }
-
-    // 4. Сбрасываем старые растяжения и ставим новые
-    for(int i = 0; i < ui->gridLayout_catalog->columnCount(); ++i)
-        ui->gridLayout_catalog->setColumnStretch(i, 0);
-
-    // Пружина справа (в колонку за последней карточкой)
-    ui->gridLayout_catalog->setColumnStretch(columns, 1);
-
-    // Пружина снизу
-    ui->gridLayout_catalog->setRowStretch(ui->gridLayout_catalog->rowCount(), 1);
 }
 
 void MainWidget::loadAdminUsers()
@@ -1347,7 +1343,7 @@ void MainWidget::loadProjectEstimates(int projectId)
     ui->tw_project_estimates->setRowCount(0);
 
     ui->tw_project_estimates->setColumnCount(5);
-    ui->tw_project_estimates->setHorizontalHeaderLabels({"Наименование", "Тип", "Кол-во", "Цена за ед.", "Итого"});
+    ui->tw_project_estimates->setHorizontalHeaderLabels({"Наименование материала", "Ед. изм.", "Кол-во", "Цена за ед.", "Сумма"});
 
     ui->tw_project_estimates->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     ui->tw_project_estimates->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
@@ -1366,89 +1362,162 @@ void MainWidget::loadProjectEstimates(int projectId)
     }
 
     QSqlQuery query(db);
-    query.prepare(R"(
-        SELECT pe.id, m.name AS material_name, pe.group_type,
-               pe.quantity, pe.price_per_unit,
-               (pe.quantity * pe.price_per_unit) AS total_row_sum
-        FROM project_estimates pe
-        LEFT JOIN materials m ON pe.material_id = m.id
-        WHERE pe.project_id = :project_id
-        ORDER BY pe.group_type, m.name ASC
-    )");
-    query.bindValue(":project_id", projectId);
 
-    if (!query.exec()) {
-        qWarning() << "Ошибка загрузки сметы:" << query.lastError().text();
-        ui->tw_project_estimates->blockSignals(false);
-        return;
+    struct MatData { QString name; QString unit; double price; double qty = 0; };
+    QMap<int, MatData> estimateData;
+
+    if (query.exec("SELECT m.id, m.name, m.base_price, u.name as unit_name FROM materials m JOIN units u ON m.unit_id = u.id")) {
+        while (query.next()) {
+            MatData md;
+            md.name = query.value("name").toString();
+            md.price = query.value("base_price").toDouble();
+            md.unit = query.value("unit_name").toString();
+            estimateData.insert(query.value("id").toInt(), md);
+        }
     }
 
-    QLocale russianLocale(QLocale::Russian, QLocale::Russia);
-    double grandTotal = 0.0;
-    int row = 0;
+    QMap<QString, int> defaultMaterials;
+    if (query.exec("SELECT c.system_code, MIN(m.id) FROM categories c JOIN materials m ON m.category_id = c.id GROUP BY c.system_code")) {
+        while (query.next()) {
+            defaultMaterials[query.value(0).toString()] = query.value(1).toInt();
+        }
+    }
 
-    while (query.next()) {
-        ui->tw_project_estimates->insertRow(row);
+    QString jsonPath = FileStorageManager::getProjectFolder(projectId) + "/layout.json";
+    QFile file(jsonPath);
+    QList<BaseEditorItem*> items;
 
-        int estimateId = query.value("id").toInt();
-        QString name = query.value("material_name").toString();
-        QString groupTypeDb = query.value("group_type").toString();
+    // === СОЗДАЕМ НЕВИДИМУЮ СЦЕНУ ДЛЯ РАСЧЕТОВ ===
+    QGraphicsScene dummyScene;
 
-        double quantity = query.value("quantity").toDouble();
-        double price = query.value("price_per_unit").toDouble();
-        double rowTotal = query.value("total_row_sum").toDouble();
+    if (file.open(QIODevice::ReadOnly)) {
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        file.close();
 
-        if (name.isEmpty()) name = "— Неизвестная позиция —";
+        if (doc.isObject()) {
+            QJsonArray itemsArray = doc.object()["items"].toArray();
+            for (const QJsonValue &value : itemsArray) {
+                if (BaseEditorItem *newItem = BaseEditorItem::createFromJson(value.toObject())) {
+                    items.append(newItem);
+                    dummyScene.addItem(newItem); // <-- Помещаем на сцену для работы коллизий
+                }
+            }
 
-        grandTotal += rowTotal;
+            // Линковка проемов со стенами
+            for (const QJsonValue &value : itemsArray) {
+                QJsonObject itemObj = value.toObject();
+                QString hostWallName = itemObj["host_wall_name"].toString();
+                QString itemName = itemObj["name"].toString();
 
-        QTableWidgetItem *nameItem = new QTableWidgetItem(name);
-        nameItem->setData(Qt::UserRole, estimateId);
-        ui->tw_project_estimates->setItem(row, 0, nameItem);
+                if (!hostWallName.isEmpty()) {
+                    WallItem *foundWall = nullptr;
+                    BaseEditorItem *targetItem = nullptr;
 
-        QString typeStr;
-        QColor typeColor;
+                    for (BaseEditorItem *i : items) {
+                        if (WallItem *w = dynamic_cast<WallItem*>(i)) {
+                            if (w->name() == hostWallName) foundWall = w;
+                        }
+                        if (i->name() == itemName) targetItem = i;
+                    }
 
-        if (groupTypeDb == "material") {
-            typeStr = "Материал";
-            typeColor = QColor(25, 118, 210);
-        } else if (groupTypeDb == "work") {
-            typeStr = "Работа";
-            typeColor = QColor(230, 81, 0);
-        } else if (groupTypeDb == "service") {
-            typeStr = "Услуга";
-            typeColor = QColor(156, 39, 176);
-        } else {
-            typeStr = groupTypeDb;
-            typeColor = QColor(0, 0, 0);
+                    if (foundWall && targetItem) {
+                        if (WindowItem *win = dynamic_cast<WindowItem*>(targetItem)) {
+                            win->setHostWall(foundWall);
+                            win->updateGeometryToWall(); // <-- Обязательно обновляем геометрию
+                        } else if (DoorItem *door = dynamic_cast<DoorItem*>(targetItem)) {
+                            door->setHostWall(foundWall);
+                            door->updateGeometryToWall(); // <-- Обязательно обновляем геометрию
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    auto extractQty = [](BaseEditorItem *item, const QString &unit) -> double {
+        if (unit == "шт" || unit == "комплект") return 1.0;
+        if (WallItem *w = dynamic_cast<WallItem*>(item)) {
+            if (unit == "м³") return w->netVolume();
+            if (unit == "м²") return w->netSurfaceArea();
+            if (unit == "м") return w->lengthInMeters();
+        } else if (FloorItem *f = dynamic_cast<FloorItem*>(item)) {
+            if (unit == "м³") return f->volume();
+            if (unit == "м²") return f->area();
+        } else if (RoofItem *r = dynamic_cast<RoofItem*>(item)) {
+            if (unit == "м³") return r->volume();
+            if (unit == "м²") return r->area();
+        } else if (FoundationBlockItem *fb = dynamic_cast<FoundationBlockItem*>(item)) {
+            if (unit == "м³") return fb->volume();
+            if (unit == "м²") return fb->area();
+        } else if (WindowItem *win = dynamic_cast<WindowItem*>(item)) {
+            if (unit == "м²") return win->area();
+        } else if (DoorItem *door = dynamic_cast<DoorItem*>(item)) {
+            if (unit == "м²") return door->area();
+        } else if (NodeItem *node = dynamic_cast<NodeItem*>(item)) {
+            if (unit == "м³") return node->area() * node->maxAttachedWallHeight();
+        }
+        return 0.0;
+    };
+
+    for (BaseEditorItem *item : items) {
+        int matId = item->materialId();
+
+        if (matId == -1) {
+            if (dynamic_cast<FoundationBlockItem*>(item)) matId = defaultMaterials["FOUNDATION_MAT"];
+            else if (dynamic_cast<WallItem*>(item)) matId = defaultMaterials["WALL_MAT"];
+            else if (dynamic_cast<FloorItem*>(item)) matId = defaultMaterials["FLOOR_MAT"];
+            else if (dynamic_cast<RoofItem*>(item)) matId = defaultMaterials["ROOF_MAT"];
+            else if (dynamic_cast<WindowItem*>(item)) matId = defaultMaterials["WINDOW_MAT"];
+            else if (dynamic_cast<DoorItem*>(item)) matId = defaultMaterials["DOOR_MAT"];
+            else if (dynamic_cast<NodeItem*>(item)) matId = defaultMaterials["WALL_MAT"];
         }
 
-        QTableWidgetItem *typeItem = new QTableWidgetItem(typeStr);
-        typeItem->setForeground(typeColor);
-        typeItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
-        typeItem->setTextAlignment(Qt::AlignCenter);
-        ui->tw_project_estimates->setItem(row, 1, typeItem);
+        if (matId != -1 && estimateData.contains(matId)) {
+            estimateData[matId].qty += extractQty(item, estimateData[matId].unit);
+        }
+    }
 
-        QTableWidgetItem *qtyItem = new QTableWidgetItem(russianLocale.toString(quantity, 'f', 3));
-        qtyItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        ui->tw_project_estimates->setItem(row, 2, qtyItem);
+    double grandTotal = 0.0;
+    QLocale loc(QLocale::Russian, QLocale::Russia);
+    int row = 0;
 
-        QTableWidgetItem *priceItem = new QTableWidgetItem(russianLocale.toString(price, 'f', 2) + " ₽");
-        priceItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        ui->tw_project_estimates->setItem(row, 3, priceItem);
+    for (auto it = estimateData.begin(); it != estimateData.end(); ++it) {
+        if (it.value().qty > 0.0001) {
+            ui->tw_project_estimates->insertRow(row);
 
-        QTableWidgetItem *totalItem = new QTableWidgetItem(russianLocale.toString(rowTotal, 'f', 2) + " ₽");
-        totalItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        totalItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
-        ui->tw_project_estimates->setItem(row, 4, totalItem);
+            double sum = it.value().qty * it.value().price;
+            grandTotal += sum;
 
-        row++;
+            QTableWidgetItem *nameItem = new QTableWidgetItem(it.value().name);
+            ui->tw_project_estimates->setItem(row, 0, nameItem);
+
+            QTableWidgetItem *unitItem = new QTableWidgetItem(it.value().unit);
+            unitItem->setTextAlignment(Qt::AlignCenter);
+            ui->tw_project_estimates->setItem(row, 1, unitItem);
+
+            QString qtyStr = (it.value().unit == "шт") ? QString::number(it.value().qty, 'f', 0) : QString::number(it.value().qty, 'f', 3);
+            QTableWidgetItem *qtyItem = new QTableWidgetItem(qtyStr);
+            qtyItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            ui->tw_project_estimates->setItem(row, 2, qtyItem);
+
+            QTableWidgetItem *priceItem = new QTableWidgetItem(loc.toString(it.value().price, 'f', 2) + " ₽");
+            priceItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            ui->tw_project_estimates->setItem(row, 3, priceItem);
+
+            QTableWidgetItem *totalItem = new QTableWidgetItem(loc.toString(sum, 'f', 2) + " ₽");
+            totalItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            totalItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+            ui->tw_project_estimates->setItem(row, 4, totalItem);
+
+            row++;
+        }
     }
 
     if (ui->lb_estimate_total_sum) {
-        ui->lb_estimate_total_sum->setText(russianLocale.toString(grandTotal, 'f', 2) + " ₽");
+        ui->lb_estimate_total_sum->setText(loc.toString(grandTotal, 'f', 2) + " ₽");
     }
 
+    // dummyScene очистит все элементы автоматически, qDeleteAll(items) удален.
     ui->tw_project_estimates->blockSignals(false);
 }
 
@@ -1688,9 +1757,9 @@ void MainWidget::loadExportData()
 
     ui->cb_export_doc_type->blockSignals(true);
     ui->cb_export_doc_type->clear();
-    ui->cb_export_doc_type->addItem("Смета проекта", "estimate");
-    ui->cb_export_doc_type->addItem("Договор подряда", "contract");
-    ui->cb_export_doc_type->addItem("Схема / Чертёж (JSON)", "layout");
+    ui->cb_export_doc_type->addItem("💰 Смета проекта", "estimate");
+    ui->cb_export_doc_type->addItem("📜 Договор подряда", "contract");
+    ui->cb_export_doc_type->addItem("📐 Схема / Чертёж (JSON)", "layout");
     ui->cb_export_doc_type->blockSignals(false);
 
     on_cb_export_doc_type_currentIndexChanged(0);
@@ -1758,44 +1827,126 @@ void MainWidget::updateExportPreview()
     QLocale loc(QLocale::Russian, QLocale::Russia);
 
     if (docType == "estimate") {
-        html += QString("<h2 style='text-align: center; color: #333;'>СМЕТА РАСХОДОВ</h2>");
+        html += QString("<h2 style='text-align: center; color: #333;'>СМЕТА РАСХОДОВ (РАСЧЕТНАЯ)</h2>");
         html += QString("<h3 style='text-align: center; color: #666;'>по объекту: %1</h3>").arg(projectName);
         html += QString("<p><b>Заказчик:</b> %1<br><b>Телефон:</b> %2</p>").arg(clientName, clientPhone);
 
         html += "<table border='1' cellspacing='0' cellpadding='6' width='100%' style='border-collapse: collapse; border: 1px solid #ddd;'>";
-        html += "<tr bgcolor='#1565c0' style='color: white;'><th>Наименование</th><th>Кол-во</th><th>Цена (₽)</th><th>Сумма (₽)</th></tr>";
+        html += "<tr bgcolor='#1565c0' style='color: white;'><th>Наименование</th><th>Ед.</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr>";
 
-        query.prepare("SELECT m.name AS material_name, pe.quantity, pe.price_per_unit, (pe.quantity * pe.price_per_unit) AS total "
-                      "FROM project_estimates pe "
-                      "LEFT JOIN materials m ON pe.material_id = m.id "
-                      "WHERE pe.project_id = :id "
-                      "ORDER BY pe.group_type, m.name");
-        query.bindValue(":id", projectId);
+        QString folderPath = FileStorageManager::getProjectFolder(projectId);
+        QString jsonPath = folderPath + "/layout.json";
 
-        double grandTotal = 0.0;
-        if (query.exec()) {
+        QMap<int, QPair<QString, double>> matPrices;
+        QMap<int, QString> matUnits;
+        if (query.exec("SELECT m.id, m.name, m.base_price, u.name FROM materials m JOIN units u ON m.unit_id = u.id")) {
             while (query.next()) {
-                QString mName = query.value("material_name").toString();
-                double qty = query.value("quantity").toDouble();
-                double price = query.value("price_per_unit").toDouble();
-                double total = query.value("total").toDouble();
-                grandTotal += total;
-
-                html += QString("<tr><td>%1</td><td align='center'>%2</td><td align='right'>%3</td><td align='right'>%4</td></tr>")
-                            .arg(mName)
-                            .arg(loc.toString(qty, 'f', 3))
-                            .arg(loc.toString(price, 'f', 2))
-                            .arg(loc.toString(total, 'f', 2));
+                matPrices[query.value(0).toInt()] = { query.value(1).toString(), query.value(2).toDouble() };
+                matUnits[query.value(0).toInt()] = query.value(3).toString();
             }
         }
 
-        html += QString("<tr bgcolor='#f5f5f5'><td colspan='3' align='right'><b>ИТОГО ПО СМЕТЕ:</b></td><td align='right' style='color: #1565c0;'><b>%1</b></td></tr>")
-                    .arg(loc.toString(grandTotal, 'f', 2));
+        QMap<QString, int> defaultMaterials;
+        if (query.exec("SELECT c.system_code, MIN(m.id) FROM categories c JOIN materials m ON m.category_id = c.id GROUP BY c.system_code")) {
+            while (query.next()) {
+                defaultMaterials[query.value(0).toString()] = query.value(1).toInt();
+            }
+        }
+
+        QFile file(jsonPath);
+        if (file.open(QIODevice::ReadOnly)) {
+            QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+            QList<BaseEditorItem*> items;
+
+            // === СОЗДАЕМ НЕВИДИМУЮ СЦЕНУ ===
+            QGraphicsScene dummyScene;
+
+            QJsonArray itemsArr = doc.object()["items"].toArray();
+            for (const QJsonValue &v : itemsArr) {
+                if (BaseEditorItem *it = BaseEditorItem::createFromJson(v.toObject())) {
+                    items.append(it);
+                    dummyScene.addItem(it); // <-- Добавляем на сцену
+                }
+            }
+
+            for (const QJsonValue &value : itemsArr) {
+                QJsonObject itemObj = value.toObject();
+                QString hostWallName = itemObj["host_wall_name"].toString();
+                QString itemName = itemObj["name"].toString();
+
+                if (!hostWallName.isEmpty()) {
+                    WallItem *foundWall = nullptr;
+                    BaseEditorItem *targetItem = nullptr;
+
+                    for (BaseEditorItem *i : items) {
+                        if (WallItem *w = dynamic_cast<WallItem*>(i)) foundWall = (w->name() == hostWallName) ? w : foundWall;
+                        if (i->name() == itemName) targetItem = i;
+                    }
+
+                    if (foundWall && targetItem) {
+                        if (WindowItem *win = dynamic_cast<WindowItem*>(targetItem)) {
+                            win->setHostWall(foundWall);
+                            win->updateGeometryToWall();
+                        } else if (DoorItem *door = dynamic_cast<DoorItem*>(targetItem)) {
+                            door->setHostWall(foundWall);
+                            door->updateGeometryToWall();
+                        }
+                    }
+                }
+            }
+
+            QMap<int, double> totals;
+            auto extractQty = [](BaseEditorItem *item, const QString &unit) -> double {
+                if (unit == "шт" || unit == "комплект") return 1.0;
+                if (WallItem *w = dynamic_cast<WallItem*>(item)) return (unit == "м³") ? w->netVolume() : (unit == "м²" ? w->netSurfaceArea() : w->lengthInMeters());
+                if (FloorItem *f = dynamic_cast<FloorItem*>(item)) return (unit == "м³") ? f->volume() : f->area();
+                if (RoofItem *r = dynamic_cast<RoofItem*>(item)) return (unit == "м³") ? r->volume() : r->area();
+                if (FoundationBlockItem *fb = dynamic_cast<FoundationBlockItem*>(item)) return (unit == "м³") ? fb->volume() : fb->area();
+                if (WindowItem *win = dynamic_cast<WindowItem*>(item)) return win->area();
+                if (DoorItem *door = dynamic_cast<DoorItem*>(item)) return door->area();
+                if (NodeItem *node = dynamic_cast<NodeItem*>(item)) return (unit == "м³") ? node->area() * node->maxAttachedWallHeight() : 0.0;
+                return 0.0;
+            };
+
+            for (BaseEditorItem *item : items) {
+                int mId = item->materialId();
+                if (mId == -1) {
+                    if (dynamic_cast<FoundationBlockItem*>(item)) mId = defaultMaterials["FOUNDATION_MAT"];
+                    else if (dynamic_cast<WallItem*>(item)) mId = defaultMaterials["WALL_MAT"];
+                    else if (dynamic_cast<FloorItem*>(item)) mId = defaultMaterials["FLOOR_MAT"];
+                    else if (dynamic_cast<RoofItem*>(item)) mId = defaultMaterials["ROOF_MAT"];
+                    else if (dynamic_cast<WindowItem*>(item)) mId = defaultMaterials["WINDOW_MAT"];
+                    else if (dynamic_cast<DoorItem*>(item)) mId = defaultMaterials["DOOR_MAT"];
+                    else if (dynamic_cast<NodeItem*>(item)) mId = defaultMaterials["WALL_MAT"];
+                }
+
+                if (mId != -1 && matPrices.contains(mId)) {
+                    totals[mId] += extractQty(item, matUnits[mId]);
+                }
+            }
+
+            double grandTotal = 0.0;
+            for (auto it = totals.begin(); it != totals.end(); ++it) {
+                if (it.value() > 0.0001) {
+                    double rowSum = it.value() * matPrices[it.key()].second;
+                    grandTotal += rowSum;
+
+                    QString qtyStr = loc.toString(it.value(), (matUnits[it.key()] == "шт" ? 'f' : 'f'), (matUnits[it.key()] == "шт" ? 0 : 3));
+
+                    html += QString("<tr><td>%1</td><td align='center'>%2</td><td align='right'>%3</td><td align='right'>%4</td><td align='right'>%5</td></tr>")
+                                .arg(matPrices[it.key()].first)
+                                .arg(matUnits[it.key()])
+                                .arg(qtyStr)
+                                .arg(loc.toString(matPrices[it.key()].second, 'f', 2))
+                                .arg(loc.toString(rowSum, 'f', 2));
+                }
+            }
+            html += QString("<tr bgcolor='#f5f5f5'><td colspan='4' align='right'><b>ИТОГО:</b></td><td align='right'><b>%1</b></td></tr>")
+                        .arg(loc.toString(grandTotal, 'f', 2));
+
+            // dummyScene автоматически удалит items
+        }
         html += "</table>";
-        html += "<br><br><table width='100%'><tr>";
-        html += QString("<td><b>Подрядчик (%1):</b><br><br>___________________</td>").arg(compName);
-        html += QString("<td><b>Заказчик (%1):</b><br><br>___________________</td>").arg(clientName);
-        html += "</tr></table>";
 
     } else if (docType == "contract") {
         html += QString("<h2 style='text-align: center; color: #333;'>ДОГОВОР ПОДРЯДА № %1</h2>").arg(projectId);
@@ -1846,18 +1997,38 @@ void MainWidget::loadCompanySettings()
     ui->le_legal_address->setText(settings.value("Company/Address").toString());
     ui->le_contact_phone->setText(settings.value("Company/Phone").toString());
 
-    QString logoPath = settings.value("Company/LogoPath").toString();
+    m_companyLogoPath = settings.value("Company/LogoPath").toString();
+    QString logoPath = m_companyLogoPath;
 
     if (!logoPath.isEmpty() && QFileInfo(logoPath).isRelative()) {
-        logoPath = QCoreApplication::applicationDirPath() + "/" + logoPath;
+        logoPath = QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(logoPath);
     }
 
-    m_companyLogoPath = settings.value("Company/LogoPath").toString();
+    ui->lb_logo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    ui->lb_logo->setMinimumSize(100, 100);
+    ui->lb_logo->setAlignment(Qt::AlignCenter);
 
     if (!logoPath.isEmpty() && QFile::exists(logoPath)) {
-        QPixmap pixmap(logoPath);
-        ui->lb_logo->setPixmap(pixmap.scaled(ui->lb_logo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+
+        // === НАДЕЖНЫЙ СПОСОБ ЧТЕНИЯ КАРТИНКИ ===
+        QPixmap pixmap;
+        QFile imgFile(logoPath);
+        if (imgFile.open(QIODevice::ReadOnly)) {
+            pixmap.loadFromData(imgFile.readAll()); // Загружаем из потока байтов
+            imgFile.close();
+        }
+
+        if (!pixmap.isNull()) {
+            ui->lb_logo->setProperty("originalImage", QVariant::fromValue(pixmap));
+            if (ui->lb_logo->width() > 10 && ui->lb_logo->height() > 10) {
+                ui->lb_logo->setPixmap(pixmap.scaled(ui->lb_logo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            }
+        } else {
+            ui->lb_logo->setText("Ошибка формата");
+        }
     } else {
+        ui->lb_logo->clear();
+        ui->lb_logo->setProperty("originalImage", QVariant());
         ui->lb_logo->setText("Логотип не выбран");
     }
 }
@@ -1990,14 +2161,13 @@ void MainWidget::loadProjectsTable()
 
 void MainWidget::on_tw_projects_list_itemSelectionChanged()
 {
-    ui->splitter_5->setSizes({1, 1});
+    ui->splitter_5->setSizes({800, 400});
 
     QTableWidgetItem *selectedItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
     bool hasSelection = (selectedItem != nullptr);
 
     if (!hasSelection) {
         ui->splitter_5->setSizes({1, 0});
-
         clearProjectDetailsUI();
         return;
     }
@@ -2017,22 +2187,36 @@ void MainWidget::loadProjectPreviews(int projectId)
     QString path2d = folderPath + "/preview_2d.png";
     QString path3d = folderPath + "/preview_3d.png";
 
+    ui->lb_preview_2d->clear();
+    ui->lb_preview_2d->setProperty("originalImage", QVariant());
+    ui->lb_preview_2d->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    ui->lb_preview_2d->setMinimumHeight(200);
+    ui->lb_preview_2d->setAlignment(Qt::AlignCenter);
+
     if (QFile::exists(path2d)) {
         QPixmap pix2d(path2d);
-        ui->lb_preview_2d->setPixmap(pix2d.scaled(ui->lb_preview_2d->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        ui->lb_preview_2d->setProperty("originalImage", QVariant::fromValue(pix2d));
+        if (ui->lb_preview_2d->width() > 10 && ui->lb_preview_2d->height() > 10) {
+            ui->lb_preview_2d->setPixmap(pix2d.scaled(ui->lb_preview_2d->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
     } else {
-        ui->lb_preview_2d->clear();
         ui->lb_preview_2d->setText("2D превью отсутствует.\nСохраните чертеж в редакторе.");
-        ui->lb_preview_2d->setAlignment(Qt::AlignCenter);
     }
+
+    ui->lb_preview_3d->clear();
+    ui->lb_preview_3d->setProperty("originalImage", QVariant());
+    ui->lb_preview_3d->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    ui->lb_preview_3d->setMinimumHeight(200);
+    ui->lb_preview_3d->setAlignment(Qt::AlignCenter);
 
     if (QFile::exists(path3d)) {
         QPixmap pix3d(path3d);
-        ui->lb_preview_3d->setPixmap(pix3d.scaled(ui->lb_preview_3d->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        ui->lb_preview_3d->setProperty("originalImage", QVariant::fromValue(pix3d));
+        if (ui->lb_preview_3d->width() > 10 && ui->lb_preview_3d->height() > 10) {
+            ui->lb_preview_3d->setPixmap(pix3d.scaled(ui->lb_preview_3d->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
     } else {
-        ui->lb_preview_3d->clear();
         ui->lb_preview_3d->setText("3D превью отсутствует.\nОткройте и закройте 3D-вид.");
-        ui->lb_preview_3d->setAlignment(Qt::AlignCenter);
     }
 }
 
@@ -2361,101 +2545,6 @@ void MainWidget::on_pb_stage_delete_clicked()
     }
 }
 
-void MainWidget::on_tw_project_estimates_itemSelectionChanged()
-{
-    bool hasSelection = ui->tw_project_estimates->currentRow() >= 0;
-    ui->pb_estimate_edit->setEnabled(hasSelection);
-    ui->pb_estimate_delete->setEnabled(hasSelection);
-}
-
-
-void MainWidget::on_pb_estimate_add_clicked()
-{
-    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
-    if (!projItem) {
-        QMessageBox::warning(this, "Внимание", "Сначала выберите проект в главном списке.");
-        return;
-    }
-
-    int projectId = projItem->data(Qt::UserRole).toInt();
-
-    ProjectEstimateDialog dialog(projectId, -1, this);
-
-    if (dialog.exec() == QDialog::Accepted) {
-        loadProjectEstimates(projectId);
-        QMessageBox::information(this, "Успех", "Позиция успешно добавлена в смету!");
-    }
-}
-
-
-void MainWidget::on_pb_estimate_edit_clicked()
-{
-    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
-    if (!projItem) return;
-    int projectId = projItem->data(Qt::UserRole).toInt();
-
-    QTableWidgetItem *estItem = ui->tw_project_estimates->item(ui->tw_project_estimates->currentRow(), 0);
-    if (!estItem) {
-        QMessageBox::warning(this, "Внимание", "Выберите позицию сметы для редактирования.");
-        return;
-    }
-
-    int estimateId = estItem->data(Qt::UserRole).toInt();
-
-    ProjectEstimateDialog dialog(projectId, estimateId, this);
-
-    if (dialog.exec() == QDialog::Accepted) {
-        loadProjectEstimates(projectId);
-
-        for (int row = 0; row < ui->tw_project_estimates->rowCount(); ++row) {
-            QTableWidgetItem *item = ui->tw_project_estimates->item(row, 0);
-            if (item && item->data(Qt::UserRole).toInt() == estimateId) {
-                ui->tw_project_estimates->setCurrentItem(item);
-                break;
-            }
-        }
-
-        QMessageBox::information(this, "Успех", "Изменения позиции успешно сохранены!");
-    }
-}
-
-
-void MainWidget::on_pb_estimate_delete_clicked()
-{
-    QTableWidgetItem *estItem = ui->tw_project_estimates->item(ui->tw_project_estimates->currentRow(), 0);
-    if (!estItem) {
-        QMessageBox::warning(this, "Внимание", "Сначала выберите позицию сметы для удаления.");
-        return;
-    }
-
-    int estimateId = estItem->data(Qt::UserRole).toInt();
-
-    QTableWidgetItem *projItem = ui->tw_projects_list->item(ui->tw_projects_list->currentRow(), 0);
-    if (!projItem) return;
-    int projectId = projItem->data(Qt::UserRole).toInt();
-
-    QMessageBox::StandardButton reply;
-    reply = QMessageBox::question(this, "Подтверждение удаления",
-                                  "Вы действительно хотите удалить выбранную позицию из сметы?",
-                                  QMessageBox::Yes | QMessageBox::No);
-
-    if (reply == QMessageBox::No) {
-        return;
-    }
-
-    QSqlDatabase db = QSqlDatabase::database();
-    QSqlQuery query(db);
-    query.prepare("DELETE FROM project_estimates WHERE id = :id");
-    query.bindValue(":id", estimateId);
-
-    if (query.exec()) {
-        loadProjectEstimates(projectId);
-        QMessageBox::information(this, "Успех", "Позиция успешно удалена из сметы!");
-    } else {
-        QMessageBox::critical(this, "Ошибка БД", "Не удалось удалить позицию:\n" + query.lastError().text());
-    }
-}
-
 void MainWidget::on_pb_client_project_add_clicked()
 {
     QTableWidgetItem *clientItem = ui->tw_clients->item(ui->tw_clients->currentRow(), 0);
@@ -2760,12 +2849,12 @@ void MainWidget::on_cb_export_doc_type_currentIndexChanged(int index)
     ui->cb_export_format->clear();
 
     if (docType == "layout") {
-        ui->cb_export_format->addItem("JSON файл чертежа (*.json)", "json");
+        ui->cb_export_format->addItem("📦 JSON файл чертежа (*.json)", "json");
     } else {
-        ui->cb_export_format->addItem("PDF документ (*.pdf)", "pdf");
-        ui->cb_export_format->addItem("HTML веб-страница (*.html)", "html");
+        ui->cb_export_format->addItem("📄 PDF документ (*.pdf)", "pdf");
+        ui->cb_export_format->addItem("📊 HTML веб-страница (*.html)", "html");
         if (docType == "estimate") {
-            ui->cb_export_format->addItem("CSV таблица для Excel (*.csv)", "csv");
+            ui->cb_export_format->addItem("🌐 CSV таблица для Excel (*.csv)", "csv");
         }
     }
     ui->cb_export_format->blockSignals(false);
@@ -2844,38 +2933,133 @@ void MainWidget::on_pb_export_save_clicked()
             QString compAddress = settings.value("Company/Address", "—").toString();
             QString compPhone = settings.value("Company/Phone", "—").toString();
 
-            out << "Компания:;" << compName << "\n";
-            out << "Юр. адрес:;" << compAddress << "\n";
-            out << "Тел.:;" << compPhone << "\n\n";
-            out << "Группа;Наименование;Количество;Цена за ед.;Сумма\n";
+            out << "Компания:;\"" << compName << "\"\n";
+            out << "Юр. адрес:;\"" << compAddress << "\"\n";
+            out << "Тел.:;\"" << compPhone << "\"\n\n";
+            out << "Наименование;Ед. изм.;Количество;Цена за ед.;Сумма\n";
 
             QSqlDatabase db = QSqlDatabase::database();
             QSqlQuery query(db);
-            query.prepare("SELECT pe.group_type, m.name, pe.quantity, pe.price_per_unit, (pe.quantity * pe.price_per_unit) AS total "
-                          "FROM project_estimates pe "
-                          "LEFT JOIN materials m ON pe.material_id = m.id "
-                          "WHERE pe.project_id = :id "
-                          "ORDER BY pe.group_type, m.name");
-            query.bindValue(":id", projectId);
 
-            QLocale loc(QLocale::Russian, QLocale::Russia);
-            if (query.exec()) {
+            QMap<int, QPair<QString, double>> matPrices;
+            QMap<int, QString> matUnits;
+            if (query.exec("SELECT m.id, m.name, m.base_price, u.name FROM materials m JOIN units u ON m.unit_id = u.id")) {
                 while (query.next()) {
-                    QString group = query.value("group_type").toString();
-                    QString name = query.value("name").toString();
-                    QString qty = loc.toString(query.value("quantity").toDouble(), 'f', 3);
-                    QString price = loc.toString(query.value("price_per_unit").toDouble(), 'f', 2);
-                    QString total = loc.toString(query.value("total").toDouble(), 'f', 2);
-
-                    qty.replace(loc.groupSeparator(), "");
-                    price.replace(loc.groupSeparator(), "");
-                    total.replace(loc.groupSeparator(), "");
-
-                    out << QString("\"%1\";\"%2\";\"%3\";\"%4\";\"%5\"\n")
-                               .arg(group, name, qty, price, total);
+                    matPrices[query.value(0).toInt()] = { query.value(1).toString(), query.value(2).toDouble() };
+                    matUnits[query.value(0).toInt()] = query.value(3).toString();
                 }
             }
-            file.close();
+
+            QMap<QString, int> defaultMaterials;
+            if (query.exec("SELECT c.system_code, MIN(m.id) FROM categories c JOIN materials m ON m.category_id = c.id GROUP BY c.system_code")) {
+                while (query.next()) {
+                    defaultMaterials[query.value(0).toString()] = query.value(1).toInt();
+                }
+            }
+
+            QString jsonPath = FileStorageManager::getProjectFolder(projectId) + "/layout.json";
+            QFile jsonFile(jsonPath);
+            if (jsonFile.open(QIODevice::ReadOnly)) {
+                QJsonDocument doc = QJsonDocument::fromJson(jsonFile.readAll());
+                QList<BaseEditorItem*> items;
+
+                // === СОЗДАЕМ НЕВИДИМУЮ СЦЕНУ ===
+                QGraphicsScene dummyScene;
+
+                QJsonArray itemsArr = doc.object()["items"].toArray();
+                for (const QJsonValue &v : itemsArr) {
+                    if (BaseEditorItem *it = BaseEditorItem::createFromJson(v.toObject())) {
+                        items.append(it);
+                        dummyScene.addItem(it); // <-- Добавляем на сцену
+                    }
+                }
+
+                for (const QJsonValue &value : itemsArr) {
+                    QJsonObject itemObj = value.toObject();
+                    QString hostWallName = itemObj["host_wall_name"].toString();
+                    QString itemName = itemObj["name"].toString();
+
+                    if (!hostWallName.isEmpty()) {
+                        WallItem *foundWall = nullptr;
+                        BaseEditorItem *targetItem = nullptr;
+
+                        for (BaseEditorItem *i : items) {
+                            if (WallItem *w = dynamic_cast<WallItem*>(i)) foundWall = (w->name() == hostWallName) ? w : foundWall;
+                            if (i->name() == itemName) targetItem = i;
+                        }
+
+                        if (foundWall && targetItem) {
+                            if (WindowItem *win = dynamic_cast<WindowItem*>(targetItem)) {
+                                win->setHostWall(foundWall);
+                                win->updateGeometryToWall();
+                            } else if (DoorItem *door = dynamic_cast<DoorItem*>(targetItem)) {
+                                door->setHostWall(foundWall);
+                                door->updateGeometryToWall();
+                            }
+                        }
+                    }
+                }
+
+                QMap<int, double> totals;
+                auto extractQty = [](BaseEditorItem *item, const QString &unit) -> double {
+                    if (unit == "шт" || unit == "комплект") return 1.0;
+                    if (WallItem *w = dynamic_cast<WallItem*>(item)) return (unit == "м³") ? w->netVolume() : (unit == "м²" ? w->netSurfaceArea() : w->lengthInMeters());
+                    if (FloorItem *f = dynamic_cast<FloorItem*>(item)) return (unit == "м³") ? f->volume() : f->area();
+                    if (RoofItem *r = dynamic_cast<RoofItem*>(item)) return (unit == "м³") ? r->volume() : r->area();
+                    if (FoundationBlockItem *fb = dynamic_cast<FoundationBlockItem*>(item)) return (unit == "м³") ? fb->volume() : fb->area();
+                    if (WindowItem *win = dynamic_cast<WindowItem*>(item)) return win->area();
+                    if (DoorItem *door = dynamic_cast<DoorItem*>(item)) return door->area();
+                    if (NodeItem *node = dynamic_cast<NodeItem*>(item)) return (unit == "м³") ? node->area() * node->maxAttachedWallHeight() : 0.0;
+                    return 0.0;
+                };
+
+                for (BaseEditorItem *item : items) {
+                    int mId = item->materialId();
+                    if (mId == -1) {
+                        if (dynamic_cast<FoundationBlockItem*>(item)) mId = defaultMaterials["FOUNDATION_MAT"];
+                        else if (dynamic_cast<WallItem*>(item)) mId = defaultMaterials["WALL_MAT"];
+                        else if (dynamic_cast<FloorItem*>(item)) mId = defaultMaterials["FLOOR_MAT"];
+                        else if (dynamic_cast<RoofItem*>(item)) mId = defaultMaterials["ROOF_MAT"];
+                        else if (dynamic_cast<WindowItem*>(item)) mId = defaultMaterials["WINDOW_MAT"];
+                        else if (dynamic_cast<DoorItem*>(item)) mId = defaultMaterials["DOOR_MAT"];
+                        else if (dynamic_cast<NodeItem*>(item)) mId = defaultMaterials["WALL_MAT"];
+                    }
+                    if (mId != -1 && matPrices.contains(mId)) {
+                        totals[mId] += extractQty(item, matUnits[mId]);
+                    }
+                }
+
+                QLocale loc(QLocale::Russian, QLocale::Russia);
+                double grandTotal = 0.0;
+
+                for (auto it = totals.begin(); it != totals.end(); ++it) {
+                    if (it.value() > 0.0001) {
+                        QString name = matPrices[it.key()].first;
+                        QString unit = matUnits[it.key()];
+                        double rowSum = it.value() * matPrices[it.key()].second;
+
+                        grandTotal += rowSum;
+
+                        QString qtyStr = loc.toString(it.value(), (unit == "шт" ? 'f' : 'f'), (unit == "шт" ? 0 : 3));
+                        QString priceStr = loc.toString(matPrices[it.key()].second, 'f', 2);
+                        QString totalStr = loc.toString(rowSum, 'f', 2);
+
+                        qtyStr.replace(loc.groupSeparator(), "");
+                        priceStr.replace(loc.groupSeparator(), "");
+                        totalStr.replace(loc.groupSeparator(), "");
+
+                        out << QString("\"%1\";\"%2\";\"%3\";\"%4\";\"%5\"\n")
+                                   .arg(name, unit, qtyStr, priceStr, totalStr);
+                    }
+                }
+
+                QString grandTotalStr = loc.toString(grandTotal, 'f', 2);
+                grandTotalStr.replace(loc.groupSeparator(), "");
+                out << QString("\"ИТОГО ПО СМЕТЕ:\";\"\";\"\";\"\";\"%1\"\n").arg(grandTotalStr);
+
+                // dummyScene автоматически удалит items
+            }
+            jsonFile.close();
         }
     }
 
@@ -2899,7 +3083,7 @@ void MainWidget::on_pb_select_logo_clicked()
     FileStorageManager::ensureFolderExists(settingsFolder);
 
     QFileInfo fileInfo(filePath);
-    QString targetPath = settingsFolder + "/" + fileInfo.fileName();
+    QString targetPath = QDir(settingsFolder).absoluteFilePath(fileInfo.fileName());
 
     if (QDir::toNativeSeparators(filePath) != QDir::toNativeSeparators(targetPath)) {
         if (QFile::exists(targetPath)) {
@@ -2915,8 +3099,34 @@ void MainWidget::on_pb_select_logo_clicked()
     QDir appDir(QCoreApplication::applicationDirPath());
     m_companyLogoPath = appDir.relativeFilePath(targetPath);
 
-    QPixmap pixmap(targetPath);
-    ui->lb_logo->setPixmap(pixmap.scaled(ui->lb_logo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    ui->lb_logo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    ui->lb_logo->setMinimumSize(100, 100);
+    ui->lb_logo->setAlignment(Qt::AlignCenter);
+
+    QImageReader reader(targetPath);
+    reader.setAutoTransform(true); // Автоматически переворачивает фото, если нужно
+
+    if (reader.canRead()) {
+        QPixmap pixmap = QPixmap::fromImage(reader.read());
+        ui->lb_logo->setProperty("originalImage", QVariant::fromValue(pixmap));
+
+        if (ui->lb_logo->width() > 10 && ui->lb_logo->height() > 10) {
+            ui->lb_logo->setPixmap(pixmap.scaled(ui->lb_logo->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
+    } else {
+        // Если Qt отказывается читать, собираем полное досье на ошибку
+        QFile checkFile(targetPath);
+        qint64 fileSize = checkFile.size();
+        QString qtError = reader.errorString();
+
+        QMessageBox::critical(this, "Отчет об ошибке Qt",
+                              QString("Я попытался открыть файл по пути:\n%1\n\n"
+                                      "Физический размер файла: %2 байт\n\n"
+                                      "Вердикт движка Qt:\n%3")
+                                  .arg(targetPath)
+                                  .arg(fileSize)
+                                  .arg(qtError));
+    }
 }
 
 void MainWidget::on_pb_open_editor_clicked()
@@ -2937,4 +3147,398 @@ void MainWidget::on_pb_open_editor_clicked()
     EditorWindow *editor = new EditorWindow(projectId, this);
     editor->setAttribute(Qt::WA_DeleteOnClose);
     editor->show();
+}
+
+void MainWidget::initCatalog()
+{
+    ui->lw_catalog->setViewMode(QListView::IconMode);
+    ui->lw_catalog->setResizeMode(QListView::Adjust);
+    ui->lw_catalog->setMovement(QListView::Static);
+    ui->lw_catalog->setGridSize(QSize(260, 350));
+
+    ui->lw_catalog->setStyleSheet(
+        "QListWidget { background-color: transparent; border: none; outline: 0; }"
+        "QListWidget::item { background: transparent; border: none; }"
+        "QListWidget::item:selected { background: transparent; border: none; color: black; }"
+        );
+}
+
+void MainWidget::loadCatalogData()
+{
+    ui->lw_catalog->clear();
+
+    QSqlDatabase db = QSqlDatabase::database();
+    if (!db.isOpen()) return;
+
+    ui->cb_catalog_category->blockSignals(true);
+    ui->cb_catalog_category->clear();
+    ui->cb_catalog_category->addItem("📋 Все категории");
+
+    QSqlQuery query(db);
+    if (query.exec("SELECT DISTINCT category FROM catalog_templates WHERE category IS NOT NULL")) {
+        while (query.next()) ui->cb_catalog_category->addItem(query.value(0).toString());
+    }
+    ui->cb_catalog_category->blockSignals(false);
+
+    struct MatData { double price; QString unit; };
+    QMap<int, MatData> materialsMap;
+    if (query.exec("SELECT m.id, m.base_price, u.name FROM materials m JOIN units u ON m.unit_id = u.id")) {
+        while (query.next()) materialsMap[query.value(0).toInt()] = {query.value(1).toDouble(), query.value(2).toString()};
+    }
+
+    QMap<QString, int> defMats;
+    if (query.exec("SELECT c.system_code, MIN(m.id) FROM categories c JOIN materials m ON m.category_id = c.id GROUP BY c.system_code")) {
+        while (query.next()) defMats[query.value(0).toString()] = query.value(1).toInt();
+    }
+
+    query.prepare("SELECT id, name, category FROM catalog_templates");
+    if (!query.exec()) return;
+
+    QLocale loc(QLocale::Russian, QLocale::Russia);
+
+    while (query.next()) {
+        int id = query.value("id").toInt();
+        QString name = query.value("name").toString();
+        QString category = query.value("category").toString();
+
+        double calcArea = 0.0;
+        double calcCost = 0.0;
+        int calcFloors = 1;
+
+        QString jsonPath = FileStorageManager::getTemplateFolder(id) + "/layout.json";
+        QFile file(jsonPath);
+        if (file.open(QIODevice::ReadOnly)) {
+            QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+            file.close();
+            if (doc.isObject()) {
+                QList<BaseEditorItem*> memItems;
+                for (const QJsonValue &v : doc.object()["items"].toArray()) {
+                    if (BaseEditorItem *newItem = BaseEditorItem::createFromJson(v.toObject())) memItems.append(newItem);
+                }
+
+                for (BaseEditorItem *item : memItems) {
+                    if (item->levelId() > calcFloors) calcFloors = item->levelId();
+                    if (FloorItem *f = dynamic_cast<FloorItem*>(item)) calcArea += f->area();
+
+                    int mId = item->materialId();
+                    if (mId == -1) {
+                        if (dynamic_cast<FoundationBlockItem*>(item)) mId = defMats["FOUNDATION_MAT"];
+                        else if (dynamic_cast<WallItem*>(item)) mId = defMats["WALL_MAT"];
+                        else if (dynamic_cast<FloorItem*>(item)) mId = defMats["FLOOR_MAT"];
+                        else if (dynamic_cast<RoofItem*>(item)) mId = defMats["ROOF_MAT"];
+                    }
+
+                    if (mId != -1 && materialsMap.contains(mId)) {
+                        QString unit = materialsMap[mId].unit;
+                        double qty = 0;
+                        if (WallItem *w = dynamic_cast<WallItem*>(item)) qty = (unit == "м³") ? w->netVolume() : (unit == "м²" ? w->netSurfaceArea() : w->lengthInMeters());
+                        else if (FloorItem *f = dynamic_cast<FloorItem*>(item)) qty = (unit == "м³") ? f->volume() : f->area();
+                        else if (RoofItem *r = dynamic_cast<RoofItem*>(item)) qty = (unit == "м³") ? r->volume() : r->area();
+                        else if (FoundationBlockItem *fb = dynamic_cast<FoundationBlockItem*>(item)) qty = fb->area();
+                        calcCost += qty * materialsMap[mId].price;
+                    }
+                }
+                qDeleteAll(memItems);
+            }
+        }
+
+        QFrame *card = new QFrame();
+        card->setFixedSize(240, 320);
+        card->setStyleSheet("QFrame { background-color: white; border: 1px solid #ddd; border-radius: 8px; } QFrame:hover { border: 1px solid #1565c0; }");
+
+        QVBoxLayout *l = new QVBoxLayout(card);
+        l->setContentsMargins(10, 10, 10, 10);
+
+        QLabel *imgLabel = new QLabel();
+        imgLabel->setFixedSize(218, 140);
+        imgLabel->setAlignment(Qt::AlignCenter);
+        QString imgPath = FileStorageManager::getTemplateFolder(id) + "/preview_3d.png";
+        if (!QFile::exists(imgPath)) imgPath = FileStorageManager::getTemplateFolder(id) + "/preview_2d.png";
+        if (QFile::exists(imgPath)) imgLabel->setPixmap(QPixmap(imgPath).scaled(imgLabel->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        else imgLabel->setText("Нет превью");
+        l->addWidget(imgLabel);
+
+        l->addWidget(new QLabel("<b>" + name + "</b>"));
+        l->addWidget(new QLabel(QString("Площадь: %1 м²\nЭтажей: %2\nЦена: от %3 ₽")
+                                    .arg(calcArea, 0, 'f', 1).arg(calcFloors).arg(loc.toString(calcCost, 'f', 0))));
+        l->addStretch();
+
+        QPushButton *btnCreate = new QPushButton("Создать проект");
+        btnCreate->setStyleSheet("background-color: #1565c0; color: white; border: none; padding: 6px; border-radius: 4px;");
+        connect(btnCreate, &QPushButton::clicked, this, [this, id, name]() {
+            ProjectEditorDialog dialog(-1, this);
+            if (dialog.exec() == QDialog::Accepted) {
+                int newId = -1;
+                QSqlQuery q(QSqlDatabase::database());
+                if (q.exec("SELECT MAX(id) FROM projects") && q.next()) newId = q.value(0).toInt();
+                if (newId != -1) {
+                    QString tmpl = FileStorageManager::getTemplateFolder(id);
+                    QString proj = FileStorageManager::getProjectFolder(newId);
+                    QFile::copy(tmpl + "/layout.json", proj + "/layout.json");
+                    QFile::copy(tmpl + "/preview_2d.png", proj + "/preview_2d.png");
+                    QFile::copy(tmpl + "/preview_3d.png", proj + "/preview_3d.png");
+                }
+                loadProjectsTable();
+                ui->lw_main->setCurrentRow(2);
+                sw_main_change(2);
+            }
+        });
+        l->addWidget(btnCreate);
+
+        QListWidgetItem *item = new QListWidgetItem(ui->lw_catalog);
+        item->setSizeHint(QSize(240, 320));
+        item->setData(Qt::UserRole, name.toLower());
+        item->setData(Qt::UserRole + 1, category);
+        item->setData(Qt::UserRole + 2, id);
+        item->setData(Qt::UserRole + 3, calcArea);
+        item->setData(Qt::UserRole + 4, calcCost);
+        item->setData(Qt::UserRole + 5, calcFloors);
+        ui->lw_catalog->setItemWidget(item, card);
+    }
+}
+
+void MainWidget::filterCatalog()
+{
+    QString searchText = ui->le_catalog_search->text().trimmed();
+
+    int categoryIndex = ui->cb_catalog_category->currentIndex();
+    QString categoryText = ui->cb_catalog_category->currentText().trimmed();
+
+    double maxArea = ui->sb_catalog_max_area->value();
+    double maxCost = ui->sb_catalog_max_price->value();
+    int floorsIndex = ui->cb_catalog_floors->currentIndex();
+
+    for (int i = 0; i < ui->lw_catalog->count(); ++i) {
+        QListWidgetItem *item = ui->lw_catalog->item(i);
+        if (!item) continue;
+
+        bool match = true;
+
+        QString itemName = item->data(Qt::UserRole).toString();
+        QString itemCat = item->data(Qt::UserRole + 1).toString();
+        double itemArea = item->data(Qt::UserRole + 3).toDouble();
+        double itemCost = item->data(Qt::UserRole + 4).toDouble();
+        int itemFloors = item->data(Qt::UserRole + 5).toInt();
+
+        if (!searchText.isEmpty() && !itemName.contains(searchText, Qt::CaseInsensitive)) {
+            match = false;
+        }
+
+        if (categoryIndex > 0 && QString::compare(itemCat, categoryText, Qt::CaseInsensitive) != 0) {
+            match = false;
+        }
+
+        if (maxArea > 0.01 && itemArea > maxArea) match = false;
+        if (maxCost > 0.01 && itemCost > maxCost) match = false;
+
+        if (floorsIndex == 1 && itemFloors != 1) match = false;
+        if (floorsIndex == 2 && itemFloors != 2) match = false;
+        if (floorsIndex == 3 && itemFloors < 3) match = false;
+
+        item->setHidden(!match);
+
+        QWidget *card = ui->lw_catalog->itemWidget(item);
+        if (card) {
+            card->setVisible(match);
+        }
+    }
+
+    ui->lw_catalog->doItemsLayout();
+}
+
+void MainWidget::on_lw_catalog_itemSelectionChanged()
+{
+    ui->splitter_4->setSizes({800, 350});
+
+    ui->lb_catalog_image->clear();
+    ui->lb_catalog_image->setProperty("originalImage", QVariant());
+
+    ui->lb_catalog_image->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+
+    ui->lb_catalog_image->setMinimumHeight(280);
+    ui->lb_catalog_image->setAlignment(Qt::AlignCenter);
+
+    QListWidgetItem *selectedItem = ui->lw_catalog->currentItem();
+    if (!selectedItem) {
+        ui->splitter_4->setSizes({1, 0});
+        return;
+    }
+
+    int templateId = selectedItem->data(Qt::UserRole + 2).toInt();
+
+    ui->splitter_4->setSizes({800, 350});
+
+    QSqlDatabase db = QSqlDatabase::database();
+    QSqlQuery query(db);
+    query.prepare("SELECT name, description FROM catalog_templates WHERE id = :id");
+    query.bindValue(":id", templateId);
+
+    if (query.exec() && query.next()) {
+        ui->lb_catalog_title->setText(query.value("name").toString());
+        ui->pte_catalog_desc->setText(query.value("description").toString());
+    }
+
+    QString tmplFolder = FileStorageManager::getTemplateFolder(templateId);
+    QString imgPath = tmplFolder + "/preview_3d.png";
+    if (!QFile::exists(imgPath)) imgPath = tmplFolder + "/preview_2d.png";
+
+    if (QFile::exists(imgPath)) {
+        QPixmap pix(imgPath);
+        ui->lb_catalog_image->setPixmap(pix.scaled(ui->lb_catalog_image->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    } else {
+        ui->lb_catalog_image->clear();
+        ui->lb_catalog_image->setText("Нет превью");
+    }
+
+    ui->tw_catalog_chars->setColumnCount(2);
+    ui->tw_catalog_chars->setHorizontalHeaderLabels({"Характеристика", "Значение"});
+    ui->tw_catalog_chars->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_catalog_chars->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    ui->tw_catalog_chars->setRowCount(0);
+
+    ui->tw_catalog_estimate->setColumnCount(5);
+    ui->tw_catalog_estimate->setHorizontalHeaderLabels({"Наименование материала", "Ед. изм.", "Кол-во", "Цена за ед.", "Сумма"});
+    ui->tw_catalog_estimate->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tw_catalog_estimate->setRowCount(0);
+
+    QString jsonPath = tmplFolder + "/layout.json";
+    QFile file(jsonPath);
+    QList<BaseEditorItem*> items;
+
+    if (file.open(QIODevice::ReadOnly)) {
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        file.close();
+
+        if (doc.isObject()) {
+            QJsonArray itemsArray = doc.object()["items"].toArray();
+            for (const QJsonValue &value : itemsArray) {
+                if (BaseEditorItem *newItem = BaseEditorItem::createFromJson(value.toObject())) {
+                    items.append(newItem);
+                }
+            }
+        }
+    }
+
+    double totalArea = 0.0;
+    int maxFloor = 1;
+    double totalWallLength = 0.0;
+
+    for (BaseEditorItem *item : items) {
+        if (item->levelId() > maxFloor) maxFloor = item->levelId();
+
+        if (FloorItem *floor = dynamic_cast<FloorItem*>(item)) {
+            totalArea += floor->area();
+        } else if (WallItem *wall = dynamic_cast<WallItem*>(item)) {
+            totalWallLength += wall->lengthInMeters();
+        }
+    }
+
+    if (totalArea <= 0.01) {
+        for (BaseEditorItem *item : items) {
+            if (FoundationBlockItem *found = dynamic_cast<FoundationBlockItem*>(item)) {
+                totalArea += found->area();
+            }
+        }
+    }
+
+    auto addCharRow = [this](const QString &name, const QString &val) {
+        int r = ui->tw_catalog_chars->rowCount();
+        ui->tw_catalog_chars->insertRow(r);
+        ui->tw_catalog_chars->setItem(r, 0, new QTableWidgetItem(name));
+        ui->tw_catalog_chars->setItem(r, 1, new QTableWidgetItem(val));
+    };
+
+    addCharRow("Полезная площадь", QString("%1 м²").arg(totalArea, 0, 'f', 1));
+    addCharRow("Количество этажей", QString::number(maxFloor));
+    addCharRow("Общая длина стен", QString("%1 м").arg(totalWallLength, 0, 'f', 1));
+
+    struct MatData { QString name; QString unit; double price; double qty = 0; };
+    QMap<int, MatData> estimateData;
+
+    if (query.exec("SELECT m.id, m.name, m.base_price, u.name as unit_name FROM materials m JOIN units u ON m.unit_id = u.id")) {
+        while (query.next()) {
+            MatData md;
+            md.name = query.value("name").toString();
+            md.price = query.value("base_price").toDouble();
+            md.unit = query.value("unit_name").toString();
+            estimateData.insert(query.value("id").toInt(), md);
+        }
+    }
+
+    QMap<QString, int> defaultMaterials;
+    if (query.exec("SELECT c.system_code, MIN(m.id) FROM categories c JOIN materials m ON m.category_id = c.id GROUP BY c.system_code")) {
+        while (query.next()) {
+            defaultMaterials[query.value(0).toString()] = query.value(1).toInt();
+        }
+    }
+
+    auto extractQty = [](BaseEditorItem *item, const QString &unit) -> double {
+        if (unit == "шт" || unit == "комплект") return 1.0;
+        if (WallItem *w = dynamic_cast<WallItem*>(item)) {
+            if (unit == "м³") return w->netVolume();
+            if (unit == "м²") return w->netSurfaceArea();
+            if (unit == "м") return w->lengthInMeters();
+        } else if (FloorItem *f = dynamic_cast<FloorItem*>(item)) {
+            if (unit == "м³") return f->volume();
+            if (unit == "м²") return f->area();
+        } else if (RoofItem *r = dynamic_cast<RoofItem*>(item)) {
+            if (unit == "м³") return r->volume();
+            if (unit == "м²") return r->area();
+        } else if (FoundationBlockItem *fb = dynamic_cast<FoundationBlockItem*>(item)) {
+            if (unit == "м³") return fb->volume();
+            if (unit == "м²") return fb->area();
+        } else if (WindowItem *win = dynamic_cast<WindowItem*>(item)) {
+            if (unit == "м²") return win->area();
+        } else if (DoorItem *door = dynamic_cast<DoorItem*>(item)) {
+            if (unit == "м²") return door->area();
+        } else if (NodeItem *node = dynamic_cast<NodeItem*>(item)) {
+            if (unit == "м³") return node->area() * node->maxAttachedWallHeight();
+        }
+        return 0.0;
+    };
+
+    for (BaseEditorItem *item : items) {
+        int matId = item->materialId();
+
+        if (matId == -1) {
+            if (dynamic_cast<FoundationBlockItem*>(item)) matId = defaultMaterials["FOUNDATION_MAT"];
+            else if (dynamic_cast<WallItem*>(item)) matId = defaultMaterials["WALL_MAT"];
+            else if (dynamic_cast<FloorItem*>(item)) matId = defaultMaterials["FLOOR_MAT"];
+            else if (dynamic_cast<RoofItem*>(item)) matId = defaultMaterials["ROOF_MAT"];
+            else if (dynamic_cast<WindowItem*>(item)) matId = defaultMaterials["WINDOW_MAT"];
+            else if (dynamic_cast<DoorItem*>(item)) matId = defaultMaterials["DOOR_MAT"];
+        }
+
+        if (matId != -1 && estimateData.contains(matId)) {
+            estimateData[matId].qty += extractQty(item, estimateData[matId].unit);
+        }
+    }
+
+    double totalProjectCost = 0.0;
+    QLocale loc(QLocale::Russian, QLocale::Russia);
+
+    for (auto it = estimateData.begin(); it != estimateData.end(); ++it) {
+        if (it.value().qty > 0.0001) {
+            int r = ui->tw_catalog_estimate->rowCount();
+            ui->tw_catalog_estimate->insertRow(r);
+
+            double sum = it.value().qty * it.value().price;
+            totalProjectCost += sum;
+
+            ui->tw_catalog_estimate->setItem(r, 0, new QTableWidgetItem(it.value().name));
+            ui->tw_catalog_estimate->setItem(r, 1, new QTableWidgetItem(it.value().unit));
+
+            QString qtyStr = (it.value().unit == "шт") ? QString::number(it.value().qty, 'f', 0) : QString::number(it.value().qty, 'f', 2);
+            ui->tw_catalog_estimate->setItem(r, 2, new QTableWidgetItem(qtyStr));
+            ui->tw_catalog_estimate->setItem(r, 3, new QTableWidgetItem(loc.toString(it.value().price, 'f', 2)));
+
+            QTableWidgetItem *sumItem = new QTableWidgetItem(loc.toString(sum, 'f', 2));
+            sumItem->setFont(QFont("Segoe UI", -1, QFont::Bold));
+            ui->tw_catalog_estimate->setItem(r, 4, sumItem);
+        }
+    }
+
+    addCharRow("Ориентировочная стоимость", loc.toString(totalProjectCost, 'f', 0) + " ₽");
+
+    qDeleteAll(items);
 }

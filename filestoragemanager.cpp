@@ -47,3 +47,10 @@ QString FileStorageManager::copyFileToStorage(const QString &sourceFilePath, con
     }
     return QString();
 }
+
+QString FileStorageManager::getTemplateFolder(int templateId)
+{
+    QString path = getStorageRoot() + "/templates/template_" + QString::number(templateId);
+    ensureFolderExists(path);
+    return path;
+}
